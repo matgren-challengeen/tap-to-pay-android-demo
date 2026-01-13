@@ -16,6 +16,7 @@ Instead, we are building a **Simulator** first.
     *   This Simulator mocks the Medusa API methods (`/store/auth/login-by-card`, `/store/open-venloop`).
     *   It **DOES** connect to the real Stripe Test Mode (to generate valid Client Secrets for the Android SDK).
     *   It **DOES** write to a real Firestore Test Collection (to test the Android app's real-time listeners).
+    *   **Constraint**: Do NOT use Railway. This stub runs locally or on a simple cloud function if needed.
 *   **Phase 2**: Build the Android App (`tap-to-pay-venloop`) against this Stub.
 *   **Phase 3**: Once the App is perfect, port the Stub logic to the real `venloop-pos-plugin`.
 

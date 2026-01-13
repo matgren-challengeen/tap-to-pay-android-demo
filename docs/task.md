@@ -15,10 +15,10 @@
 - [x] **Project Reorg** (Renamed repo, moved docs) (Completed) <!-- id: 21 -->
 
 ## Implementation Phase 1: Stub Backend (Simulator)
-- [ ] Create `tap-to-pay-stub-backend` project (Node/Express) <!-- id: 22 -->
-- [ ] Implement `POST /store/auth/prepare-setup` (Stripe Token) <!-- id: 23 -->
+- [x] Create `tap-to-pay-stub-backend` project (Node/Express) <!-- id: 22 -->
+- [x] Implement `POST /store/auth/prepare-setup` (Stripe Token) <!-- id: 23 -->
 - [ ] Implement `POST /store/auth/login-by-card` (Mock Auth) <!-- id: 24 -->
-- [ ] Implement Firestore Mock Writer (for Real-time signals) <!-- id: 25 -->
+- [x] Implement Firestore Mock Writer (Skeleton Implemented - No Ops without Key) <!-- id: 25 -->
 
 ## Implementation Phase 2: Android (Native)
 - [ ] Connect App to Stub Backend <!-- id: 26 -->

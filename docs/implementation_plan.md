@@ -39,6 +39,7 @@ We will use a **Stub Backend** (Simulator) for the entire development lifecycle.
 ### Phase 1: Stub Backend (The Simulator)
 **Objective**: Build a controlled environment to develop the Android App without risking the production backend.
 *   **Tech Stack**: Node.js, Express, TypeScript, Firestore Admin SDK.
+*   **Constraint**: Do NOT use Railway. Run locally or via simple cloud functions.
 *   **Why**: We need to simulate edge cases (Declines, Network Latency, Door Open events) that are difficult or slow to reproduce with physical hardware and the real Medusa backend.
 
 **Key Deliverables:**
