@@ -17,17 +17,17 @@
 ## Implementation Phase 1: Stub Backend (Simulator)
 - [x] Create `tap-to-pay-stub-backend` project (Node/Express) <!-- id: 22 -->
 - [x] Implement `POST /store/auth/prepare-setup` (Stripe Token) <!-- id: 23 -->
-- [ ] Implement `POST /store/auth/login-by-card` (Mock Auth) <!-- id: 24 -->
-- [x] Implement Firestore Mock Writer (Skeleton Implemented - No Ops without Key) <!-- id: 25 -->
+- [x] Implement `POST /store/auth/login-by-card` (Mock Auth) <!-- id: 24 -->
+- [x] Implement Firestore Mock Writer (Skeleton Implemented - Verified) <!-- id: 25 -->
 
 ## Implementation Phase 2: Android (Native)
-- [ ] Connect App to Stub Backend <!-- id: 26 -->
-- [ ] Strip out "Payment Intent" flow from `MainActivity` <!-- id: 14 -->
-- [ ] Implement `SetupIntent` flow (Prepare -> Collect -> Confirm -> Login) <!-- id: 15 -->
-- [ ] **Technical Foundation**: Add Firebase/Firestore SDKs & Permissions <!-- id: 16 -->
-- [ ] **Data Layer**: Create `SessionRepository` (Firestore Listener) & `CartRepository` (Medusa API) <!-- id: 17 -->
-- [ ] **UI Layer**: Build Native Shopping Screen (RecyclerView/Compose) <!-- id: 18 -->
-- [ ] **UI Layer**: Build Native Summary Screen <!-- id: 19 -->
+- [x] Connect App to Stub Backend <!-- id: 26 -->
+- [x] Strip out "Payment Intent" flow from `MainActivity` <!-- id: 14 -->
+- [x] Implement `SetupIntent` flow (Prepare -> Collect -> Confirm -> Login) <!-- id: 15 -->
+- [x] **Technical Foundation**: Add Firebase/Firestore SDKs & Permissions <!-- id: 16 -->
+- [x] **Data Layer**: Create `SessionRepository` (Firestore Listener) & `CartRepository` (Medusa API) <!-- id: 17 -->
+- [x] **UI Layer**: Build Native Shopping Screen (RecyclerView/Compose) <!-- id: 18 -->
+- [x] **UI Layer**: Build Native Summary Screen <!-- id: 19 -->
 
 
 

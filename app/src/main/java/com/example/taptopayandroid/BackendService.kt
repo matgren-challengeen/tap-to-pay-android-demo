@@ -2,11 +2,14 @@ package com.example.taptopayandroid
 
 import com.example.taptopayandroid.ConnectionToken
 import com.example.taptopayandroid.PaymentIntentCreationResponse
+import com.example.taptopayandroid.models.StoreCartResponse
 import retrofit2.Call
 import retrofit2.http.Field
 import retrofit2.http.FieldMap
 import retrofit2.http.FormUrlEncoded
+import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 /**
  * The `BackendService` interface handles the two simple calls we need to make to our backend.
@@ -43,4 +46,18 @@ interface BackendService {
     fun createPaymentIntent(
         @FieldMap createPaymentIntentParams: Map<String, String>
     ): Call<PaymentIntentCreationResponse>
+
+    @POST("store/auth/prepare-setup")
+    fun prepareSetup(): Call<PrepareSetupResponse>
+
+    @FormUrlEncoded
+    @POST("store/auth/login-by-card")
+    fun loginByCard(@Field("payment_method_id") paymentMethodId: String): Call<LoginResponse>
+
+    @FormUrlEncoded
+    @POST("store/auth/login-return")
+    fun loginReturn(@Field("payment_method_id") paymentMethodId: String): Call<LoginReturnResponse>
+
+    @GET("store/carts/{id}")
+    fun getCart(@Path("id") id: String): Call<StoreCartResponse>
 }

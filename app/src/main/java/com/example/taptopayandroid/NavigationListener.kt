@@ -1,6 +1,6 @@
 package com.example.taptopayandroid
 
-import com.stripe.stripeterminal.external.models.DiscoveryMethod
+
 import com.stripe.stripeterminal.external.models.Reader
 
 /**
@@ -12,15 +12,15 @@ interface NavigationListener {
      */
     fun onConnectReader()
 
-    fun onCollectPayment(
-        amount: Long,
-        currency: String,
-        skipTipping: Boolean,
-        extendedAuth: Boolean,
-        incrementalAuth: Boolean
-    )
+    fun onStartLoginFlow(email: String? = null)
 
-    fun onNavigateToPaymentDetails()
+    fun onStartReturnFlow()
+
+    fun onSessionCompleted(totalAmount: String)
+    
+    fun onOpenSettings()
+    
+    fun onSettingsClosed()
 
     fun onCancel()
 }

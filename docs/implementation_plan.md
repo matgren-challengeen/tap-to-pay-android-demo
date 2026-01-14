@@ -42,14 +42,26 @@ We will use a **Stub Backend** (Simulator) for the entire development lifecycle.
 *   **Constraint**: Do NOT use Railway. Run locally or via simple cloud functions.
 *   **Why**: We need to simulate edge cases (Declines, Network Latency, Door Open events) that are difficult or slow to reproduce with physical hardware and the real Medusa backend.
 
+> [!IMPORTANT]
+> **Network Binding**: The server MUST bind to `0.0.0.0` (not `localhost`) so it's accessible from the physical Android device on the same WiFi network.
+
 **Key Deliverables:**
-1.  **Stripe Wrapper**: An endpoint `POST /auth/prepare-setup` that talks to the *Real* Stripe API (Test Mode) to generate valid `client_secret`s. This allows the Android SDK to actually function and process "Test Cards".
-2.  **Mock Auth**: An endpoint `POST /auth/login-by-card` that accepts a `payment_method_id` and returns a hardcoded "Guest Session" (e.g., `cust_stub` / `sess_stub`).
-3.  **Mock Hardware Trigger**: An endpoint `POST /simulate/door-open` and `POST /simulate/item-picked`.
-4.  **Firestore Writer**: The Stub will write to the *Real* Firestore (Test Collection) to trigger the Android App's real-time listeners.
+1.  **Connection Token** *(Critical)*: An endpoint `POST /connection_token` that calls `stripe.terminal.connectionTokens.create()` and returns `{ secret: "..." }`. This is **required by Stripe Terminal SDK** to authenticate before any reader operations.
+2.  **Stripe Wrapper**: An endpoint `POST /store/auth/prepare-setup` that creates a `SetupIntent` and returns `{ secret: "seti_..." }`. This allows the Android SDK to capture payment methods.
+3.  **Mock Auth**: An endpoint `POST /store/auth/login-by-card` that accepts `payment_method_id` and returns a mock session `{ session_id: "...", customer_id: "..." }`.
+4.  **Mock Hardware Trigger**: Endpoints `POST /simulate/door-open` and `POST /simulate/item-picked`.
+5.  **Firestore Writer**: The Stub will write to the *Real* Firestore (Test Collection) to trigger the Android App's real-time listeners.
+
+**API Response Formats:**
+| Endpoint | Response Format |
+|----------|-----------------|
+| `POST /connection_token` | `{ "secret": "pst_test_..." }` |
+| `POST /store/auth/prepare-setup` | `{ "secret": "seti_...", "id": "seti_..." }` |
+| `POST /store/auth/login-by-card` | `{ "session_id": "...", "customer_id": "..." }` |
 
 **Exit Criteria (DoD):**
-*   [ ] `curl` to Stub returns a valid Stripe `secret` starting with `seti_...`.
+*   [x] `curl` to `/connection_token` returns a valid Stripe token starting with `pst_test_...`.
+*   [x] `curl` to `/store/auth/prepare-setup` returns a valid Stripe `secret` starting with `seti_...`.
 *   [ ] `curl` to Stub triggers a document update in Firestore that I can see in the Firebase Console.
 
 ---

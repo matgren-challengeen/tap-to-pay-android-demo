@@ -53,8 +53,14 @@ If you work on the Android App, you MUST adhere to:
 *   **SetupIntent**: We use `SetupIntent` to capture the card credential (not PaymentIntent).
 
 ## 6. Current Status (as of Jan 2026)
-*   **Planning**: Complete.
-*   **Next Action**: Initialize `tap-to-pay-stub-backend` and implement the `prepare-setup` mock endpoint.
+*   **Phase 1 (Stub Backend)**: Complete.
+    *   Stub running on port 3000.
+    *   Stripe `prepare-setup` and `login-by-card` endpoints verified.
+    *   Firestore Mock Writer active.
+*   **Phase 2 (Android App)**: In Progress.
+*   **Phase 2 (Android App)**: In Progress.
+    *   **Completed**: Stub Connection, Cleanup, SetupIntent Login Flow, FireBase SDKs, Data Layer, UI Layer (Shopping & Summary).
+    *   **Current Focus**: Verification and Integration Testing.
 
 ## 7. Secrets Management Protocol (Security)
 To ensure no secrets are leaked to GitHub:

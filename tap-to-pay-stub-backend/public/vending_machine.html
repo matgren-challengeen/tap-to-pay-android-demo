@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Vending Machine Simulator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .machine-container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            border: 1px solid #e1e4e8;
+        }
+
+        h1 {
+            color: #1a1f36;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .status-panel {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #edf2f7;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .status-label {
+            color: #697386;
+            font-weight: 600;
+        }
+
+        .status-value {
+            color: #1a1f36;
+            font-family: monospace;
+        }
+
+        .shelves {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .item-slot {
+            background: #fff;
+            border: 2px solid #e3e8ee;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.2s;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .item-slot.active {
+            cursor: pointer;
+            border-color: #635bff;
+            opacity: 1;
+            background: #f4f7ff;
+        }
+
+        .item-slot:hover.active {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(99, 91, 255, 0.1);
+        }
+
+        .door-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #edf2f7;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #635bff;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #3c4257;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ff5b5b;
+            color: white;
+        }
+
+        /* Keep for potential unused classes */
+        .btn-disabled {
+            background: #e3e8ee;
+            color: #a3acb9;
+            cursor: not-allowed;
+        }
+
+        button:disabled {
+            background: #e3e8ee;
+            color: #a3acb9;
+            cursor: not-allowed;
+        }
+
+        .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .indicator.red {
+            background-color: #ef4444;
+        }
+
+        .indicator.green {
+            background-color: #22c55e;
+        }
+
+        .indicator.yellow {
+            background-color: #eab308;
+        }
+
+        .lock-status {
+            font-size: 48px;
+            margin: 10px 0;
+        }
+
+        .lock-status.locked {
+            color: #ef4444;
+        }
+
+        .lock-status.unlocked {
+            color: #22c55e;
+        }
+
+        /* Hidden by default, shown when enabled */
+        .interaction-area {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="machine-container">
+        <h1>Purchase Vending Machine Simulator</h1>
+
+        <div class="status-panel">
+            <div class="status-row">
+                <span class="status-label">Simulator Status:</span>
+                <span class="status-value" id="connection-status"><span class="indicator red"></span>Disconnected</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">Session ID:</span>
+                <input type="text" id="session-id" class="status-value" placeholder="Create Session via App" readonly
+                    style="border:none; bg:transparent; text-align:right; width:200px;">
+            </div>
+        </div>
+
+        <div class="lock-status locked" id="lock-icon">🔒</div>
+        <div style="margin-bottom: 20px; font-weight: bold; color: #697386;" id="lock-text">LOCKED</div>
+
+        <div class="door-controls">
+            <button id="btn-open-door" class="btn-primary" onclick="openDoor()" disabled>Open Door</button>
+            <button id="btn-close-door" class="btn-secondary" onclick="closeDoor()" disabled>Close Door</button>
+        </div>
+
+        <div class="interaction-area" id="shelves-area" style="opacity: 0.5; pointer-events: none;">
+            <!-- Dimmed when door closed -->
+            <p
+                style="text-align: left; color: #697386; font-size: 12px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                Products</p>
+            <div class="shelves" id="shelves">
+                <div class="item-slot active" onclick="pickItem(1)">
+                    <div style="font-size: 24px; margin-bottom: 5px;">🥤</div>
+                    <div>Cola</div>
+                    <div style="font-size: 12px; color: #697386;">$2.00</div>
+                </div>
+                <div class="item-slot active" onclick="pickItem(2)">
+                    <div style="font-size: 24px; margin-bottom: 5px;">🥯</div>
+                    <div>Bagel</div>
+                    <div style="font-size: 12px; color: #697386;">$3.50</div>
+                </div>
+                <div class="item-slot active" onclick="pickItem(3)">
+                    <div style="font-size: 24px; margin-bottom: 5px;">🍲</div>
+                    <div>Soup Jar (+ Deposit)</div>
+                    <div style="font-size: 12px; color: #697386;">$5.00 + $0.50</div>
+                </div>
+            </div>
+        </div>
+        <div id="return-interface"
+            style="display:none; background:#4a5568; padding:20px; color:white; border-radius:10px; margin-top:20px; width:100%; box-sizing:border-box;">
+            <h3 style="margin-top:0;">♻️ Reverse Vending Mode</h3>
+            <p style="font-size:14px; color:#cbd5e0; margin-bottom:15px;">Please insert containers to simulate return.
+            </p>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button class="btn-primary" onclick="placeReturnedItem(1)">Insert Eligible Jar</button>
+                <button class="btn-secondary" style="background:#ed8936;" onclick="placeReturnedItem(2)">Insert Foreign
+                    Jar</button>
+            </div>
+        </div>
+
+        <div style="width:100%; max-width:600px; margin-top:20px; text-align:left;">
+            <strong style="color:#697386; font-size:12px; text-transform:uppercase;">Device Log</strong>
+            <div id="log"
+                style="background:#fff; height:150px; overflow-y:scroll; border:1px solid #e1e4e8; padding:10px; font-family:monospace; font-size:12px; border-radius:6px; margin-top:5px;">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const baseUrl = ""; // Same origin
+        // Start 30 seconds in the past to catch recent events from Android app
+        let lastEventTimestamp = Date.now() - 30000;
+        let isDoorUnlocked = false;
+        let isDoorOpen = false;
+        let doorTimer = null;
+        let currentSessionId = null;
+
+        async function pollEvents() {
+            try {
+                const res = await fetch(`${baseUrl}/simulate/events?since=${lastEventTimestamp}`);
+                const data = await res.json();
+
+                if (data.events && data.events.length > 0) {
+                    data.events.forEach(e => {
+                        log(`[${e.source.toUpperCase()}] ${e.message}`, e.type);
+                        lastEventTimestamp = Math.max(lastEventTimestamp, e.timestamp);
+
+                        // Unlock Door Logic
+                        if (e.message.includes('Transaction Open')) {
+                            // Extract Session ID if present
+                            // Expected format: "Transaction Open: <session_id>"
+                            const parts = e.message.split(':');
+                            if (parts.length > 1) {
+                                const sid = parts[1].trim();
+                                currentSessionId = sid;
+                                const sessionInput = document.getElementById('session-id');
+                                if (sessionInput) sessionInput.value = sid;
+                                console.log("Session ID set to:", sid);
+                            }
+                            handleUnlock();
+                        }
+
+                        // Return Mode Logic
+                        if (e.message.includes('Return Mode Active')) {
+                            activateReturnMode();
+                        }
+                    });
+                }
+            } catch (e) {
+                // silent
+            }
+        }
+
+        function activateReturnMode() {
+            log("Switching to Return Mode...", "info");
+            document.getElementById('shelves-area').style.display = 'none';
+            const returnInterface = document.getElementById('return-interface');
+            if (returnInterface) {
+                returnInterface.style.display = 'block';
+            }
+        }
+
+        async function placeReturnedItem(scaleId) {
+            if (!currentSessionId) return alert("Waiting for Session ID...");
+
+            console.log(`Placing Jar on Scale ${scaleId}...`);
+            try {
+                await fetch(`${baseUrl}/simulate/item-returned`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        scale_id: scaleId
+                    })
+                });
+                console.log(`Success: Jar Placed on Scale ${scaleId}`);
+            } catch (e) {
+                console.error(`Error: ${e.message}`);
+            }
+        }
+
+        function handleUnlock() {
+            if (isDoorUnlocked) return; // Already unlocked
+
+            isDoorUnlocked = true;
+            updateUI();
+            log("🔓 Door UNLOCKED - You have 15 seconds to open!", "success");
+
+            // Start 15s Timeout
+            if (doorTimer) clearTimeout(doorTimer);
+            doorTimer = setTimeout(() => {
+                log("⏰ TIMEOUT: Door re-locked due to inactivity (15s)", "warning");
+                isDoorUnlocked = false;
+                isDoorOpen = false;
+                currentSessionId = null;
+                document.getElementById('session-id').value = '';
+                updateUI();
+            }, 15000);
+        }
+
+        function updateUI() {
+            const btnOpen = document.getElementById('btn-open-door');
+            const btnClose = document.getElementById('btn-close-door');
+            const lockIcon = document.getElementById('lock-icon');
+            const lockText = document.getElementById('lock-text');
+            const shelvesArea = document.getElementById('shelves-area');
+            const statusEl = document.getElementById('connection-status');
+
+            // Update connection status
+            if (currentSessionId) {
+                statusEl.innerHTML = '<span class="indicator green"></span>Connected';
+            } else {
+                statusEl.innerHTML = '<span class="indicator red"></span>Disconnected';
+            }
+
+            if (isDoorUnlocked) {
+                lockIcon.innerText = "🔓";
+                lockIcon.className = "lock-status unlocked";
+                lockText.innerText = "UNLOCKED";
+
+                if (isDoorOpen) {
+                    // Door is open - can close but not open again
+                    btnOpen.disabled = true;
+                    btnClose.disabled = false;
+                    shelvesArea.style.opacity = "1.0";
+                    shelvesArea.style.pointerEvents = "auto";
+                } else {
+                    // Door is unlocked but closed - can open
+                    btnOpen.disabled = false;
+                    btnOpen.innerText = "OPEN DOOR";
+                    btnOpen.className = "btn-primary";
+                    btnClose.disabled = true;
+                    shelvesArea.style.opacity = "0.5";
+                    shelvesArea.style.pointerEvents = "none";
+                }
+            } else {
+                btnOpen.disabled = true;
+                btnOpen.innerText = "Open Door";
+                btnOpen.className = "btn-primary";
+                btnClose.disabled = true;
+
+                lockIcon.innerText = "🔒";
+                lockIcon.className = "lock-status locked";
+                lockText.innerText = "LOCKED";
+
+                shelvesArea.style.opacity = "0.5";
+                shelvesArea.style.pointerEvents = "none";
+            }
+        }
+
+        // Initialize state
+        updateUI();
+
+        async function openDoor() {
+            if (!isDoorUnlocked) return;
+
+            const sessionId = currentSessionId || document.getElementById('session-id').value;
+            try {
+                await fetch(`${baseUrl}/simulate/door-open`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId || 'manual_open' })
+                });
+                log("🚪 Door OPENED - Pick your items!", "success");
+                isDoorOpen = true;
+                // Cancel timeout since door is now open
+                if (doorTimer) clearTimeout(doorTimer);
+                updateUI();
+            } catch (e) { console.error(e); }
+        }
+
+        async function closeDoor() {
+            const sessionId = currentSessionId || document.getElementById('session-id').value;
+            try {
+                await fetch(`${baseUrl}/simulate/door-close`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId || 'manual_close' })
+                });
+                log("🚪 Door CLOSED - Session complete!", "info");
+                isDoorUnlocked = false;
+                isDoorOpen = false;
+                currentSessionId = null;
+                document.getElementById('session-id').value = '';
+                updateUI();
+            } catch (e) { console.error(e); }
+        }
+
+        async function pickItem(itemId) {
+            const sessionId = currentSessionId || document.getElementById('session-id').value;
+            if (!sessionId) return alert("Please simulate door open / session creation first!");
+            if (!isDoorOpen) return alert("Door must be open to pick items!");
+
+            const items = {
+                1: { price: 200, deposit: 0, name: "Venloop Cola" },
+                2: { price: 350, deposit: 0, name: "Venloop Bagel" },
+                3: { price: 500, deposit: 50, name: "Venloop Jar" } // cents
+            };
+
+            const item = items[itemId];
+
+            try {
+                await fetch(`${baseUrl}/simulate/item-picked`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        item_id: itemId,
+                        price: item.price,
+                        deposit: item.deposit
+                    })
+                });
+                log(`🛒 Picked: ${item.name} ($${(item.price / 100).toFixed(2)}${item.deposit ? ' + $0.50 deposit' : ''})`, "success");
+            } catch (e) { console.error(e); }
+        }
+
+
+        // Poll every 1 second
+        setInterval(() => {
+            pollEvents();
+        }, 1000);
+
+        // Update log function to support types
+        function log(msg, type = 'info') {
+            const el = document.getElementById('log');
+            if (!el) return;
+
+            const colors = {
+                'success': '#22c55e',
+                'error': '#ef4444',
+                'warning': '#f59e0b',
+                'info': '#3b82f6'
+            };
+            const color = colors[type] || '#333';
+
+            el.innerHTML = `<div style="color: ${color}; font-weight: ${type !== 'info' ? 'bold' : 'normal'}">${new Date().toLocaleTimeString()} - ${msg}</div>` + el.innerHTML;
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venloop Simulator Dashboard</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 40px;
+        }
+
+        .links {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            text-decoration: none;
+            color: #333;
+            transition: transform 0.2s;
+            width: 250px;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .card h2 {
+            margin-top: 0;
+        }
+
+        .card p {
+            color: #666;
+        }
+
+        .logs-link {
+            margin-top: 40px;
+            color: #666;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Venloop Simulator Dashboard</h1>
+
+    <div class="links">
+        <a href="/vending_machine.html" class="card" target="_blank">
+            <h2 style="color: #d32f2f;">Purchase Vending</h2>
+            <p>Buy Standard Items & Jars</p>
+            <small>Simulates the main Vending Machine</small>
+        </a>
+
+        <a href="/reverse_vending.html" class="card" target="_blank">
+            <h2 style="color: #00796b;">Reverse Vending</h2>
+            <p>Return Containers (Deposits)</p>
+            <small>Simulates the Jar Return Machine</small>
+        </a>
+    </div>
+
+    <a href="/logs.html" class="logs-link" target="_blank">View Server Logs</a>
+
+</body>
+
+</html>

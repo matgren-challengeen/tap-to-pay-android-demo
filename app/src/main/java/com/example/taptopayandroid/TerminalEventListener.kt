@@ -14,9 +14,7 @@ import com.stripe.stripeterminal.external.models.Reader
  */
 class TerminalEventListener : TerminalListener {
 
-    override fun onUnexpectedReaderDisconnect(reader: Reader) {
-        Log.i("UnexpectedDisconnect", reader.serialNumber ?: "reader's serialNumber is null!")
-    }
+
 
     override fun onConnectionStatusChange(status: ConnectionStatus) {
         Log.i("ConnectionStatusChange", status.toString())

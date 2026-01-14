@@ -2,11 +2,15 @@ package com.example.taptopayandroid
 
 import com.example.taptopayandroid.BuildConfig
 import com.example.taptopayandroid.PaymentIntentCreationResponse
+import com.example.taptopayandroid.models.StoreCartResponse
 import com.stripe.stripeterminal.external.models.ConnectionTokenException
 import okhttp3.OkHttpClient
+import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
+import retrofit2.http.Path
 import java.io.IOException
 
 /**
@@ -85,5 +89,35 @@ object ApiClient {
         }
 
         service.createPaymentIntent(createPaymentIntentParams).enqueue(callback)
+    }
+
+    internal fun prepareSetup(callback: Callback<PrepareSetupResponse>) {
+        service.prepareSetup().enqueue(callback)
+    }
+
+    internal fun loginByCard(paymentMethodId: String, callback: Callback<LoginResponse>) {
+        service.loginByCard(paymentMethodId).enqueue(callback)
+    }
+
+    fun loginReturn(paymentMethodId: String, callback: (String?, Int) -> Unit) {
+        service.loginReturn(paymentMethodId).enqueue(object : Callback<LoginReturnResponse> {
+            override fun onResponse(call: Call<LoginReturnResponse>, response: retrofit2.Response<LoginReturnResponse>) {
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    callback(body.session_id, body.returnable_count)
+                } else {
+                    callback(null, 0)
+                }
+            }
+
+            override fun onFailure(call: Call<LoginReturnResponse>, t: Throwable) {
+                t.printStackTrace()
+                callback(null, 0)
+            }
+        })
+    }
+
+    internal fun getCart(id: String): Call<StoreCartResponse> {
+        return service.getCart(id)
     }
 }

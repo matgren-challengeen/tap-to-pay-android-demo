@@ -14,8 +14,9 @@ class TokenProvider : ConnectionTokenProvider {
         try {
             val token = ApiClient.createConnectionToken()
             callback.onSuccess(token)
-        } catch (e: ConnectionTokenException) {
-            callback.onFailure(e)
+        } catch (e: Exception) {
+            android.util.Log.e("TokenProvider", "Failed to fetch token", e)
+            callback.onFailure(ConnectionTokenException("Failed to fetch token", e))
         }
     }
 }

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venloop Server Logs</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #222;
+            color: #ddd;
+        }
+
+        #log-container {
+            background: #111;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            height: 90vh;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 2px;
+        }
+
+        .timestamp {
+            color: #888;
+            margin-right: 10px;
+        }
+
+        .source {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .type-info {
+            color: #ddd;
+        }
+
+        .type-success {
+            color: #66bb6a;
+        }
+
+        .type-warning {
+            color: #ffa726;
+        }
+
+        .type-error {
+            color: #ef5350;
+        }
+
+        .app-event {
+            font-weight: bold;
+            color: #4fc3f7;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="log-container">Loading logs...</div>
+
+    <script>
+        const baseUrl = window.location.origin;
+        let lastEventTimestamp = 0;
+        const container = document.getElementById('log-container');
+
+        async function pollEvents() {
+            try {
+                const res = await fetch(`${baseUrl}/simulate/events?since=${lastEventTimestamp}`);
+                const data = await res.json();
+
+                if (data.events && data.events.length > 0) {
+                    if (lastEventTimestamp === 0) container.innerHTML = ""; // Clear loading message
+
+                    data.events.forEach(e => {
+                        const div = document.createElement('div');
+                        div.className = `log-entry type-${e.type}`;
+
+                        const isApp = e.source === 'app' || e.message.includes('[APP]');
+
+                        div.innerHTML = `
+                            <span class="timestamp">${new Date(e.timestamp).toLocaleTimeString()}</span>
+                            <span class="source" style="color: ${getSourceColor(e.source)}">[${e.source.toUpperCase()}]</span>
+                            <span class="${isApp ? 'app-event' : ''}">${e.message}</span>
+                        `;
+                        container.prepend(div); // Newest top
+                        lastEventTimestamp = Math.max(lastEventTimestamp, e.timestamp);
+                    });
+                }
+            } catch (e) {
+                console.error("Polling error", e);
+            }
+        }
+
+        function getSourceColor(source) {
+            switch (source) {
+                case 'app': return '#4fc3f7';
+                case 'backend': return '#ab47bc';
+                case 'hardware': return '#ffca28';
+                default: return '#eee';
+            }
+        }
+
+        setInterval(pollEvents, 1000);
+        pollEvents();
+    </script>
+</body>
+
+</html>

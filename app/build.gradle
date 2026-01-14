@@ -3,28 +3,31 @@ plugins {
     id "kotlin-android"
     id 'org.jetbrains.kotlin.plugin.parcelize'
     id 'kotlin-kapt'
+    id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
 }
 
 android {
     namespace 'com.example.taptopayandroid'
-    compileSdk latestSdkVersion
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.example.taptopayandroid"
-        minSdk 21
+        minSdk 26
         targetSdk 33
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        targetSdkVersion latestSdkVersion
+        targetSdkVersion 35
         buildConfigField "String", "EXAMPLE_BACKEND_URL", "\"${project.getProperty("EXAMPLE_BACKEND_URL").replaceAll("^[\"\\s]*|[\"\\s]*\$", "")}\""
     }
 
     buildFeatures {
         dataBinding true
         viewBinding true
+        buildConfig true
     }
 
     buildTypes {
@@ -52,11 +55,11 @@ android {
 
 
 ext {
-    androidx_lifecycle_version = '2.5.1'
-    kotlin_coroutines_version = '1.6.4'
+    androidx_lifecycle_version = '2.6.2'
+    kotlin_coroutines_version = '1.7.3'
     okhttp_version = '4.10.0'
     retrofit_version = '2.9.0'
-    stripeTerminalVersion = "2.17.1"
+    stripeTerminalVersion = "5.1.1"
 }
 
 dependencies {
@@ -67,6 +70,7 @@ dependencies {
     implementation "androidx.appcompat:appcompat:1.5.1"
     implementation "androidx.core:core-ktx:1.9.0"
     implementation "androidx.constraintlayout:constraintlayout:2.1.4"
+    implementation "androidx.fragment:fragment-ktx:1.6.2"
 
     // ViewModel and LiveData
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$androidx_lifecycle_version"
@@ -88,9 +92,18 @@ dependencies {
     implementation "com.squareup.retrofit2:converter-gson:$retrofit_version"
 
     // Stripe Terminal library
-    implementation "com.stripe:stripeterminal-localmobile:2.20.0"
-    implementation "com.stripe:stripeterminal-core:2.20.0"
+    implementation "com.stripe:stripeterminal-taptopay:$stripeTerminalVersion"
+    implementation "com.stripe:stripeterminal:$stripeTerminalVersion"
 
     // Leak canary
     debugImplementation "com.squareup.leakcanary:leakcanary-android:2.9.1"
+
+    // Firebase
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation 'com.google.firebase:firebase-analytics-ktx'
+    implementation 'com.google.firebase:firebase-firestore-ktx'
+    implementation 'com.google.firebase:firebase-crashlytics'
+    
+    // Security for encrypted preferences
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 }

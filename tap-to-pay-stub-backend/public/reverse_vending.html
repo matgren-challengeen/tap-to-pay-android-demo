@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reverse Vending Machine Simulator</title>
+    <style>
+        /* Distinct Industrial/Recycling Theme */
+        body {
+            font-family: 'Roboto', 'Segoe UI', sans-serif;
+            background-color: #2d3748;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .machine-container {
+            background: #4a5568;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            border: 4px solid #718096;
+        }
+
+        h1 {
+            color: #fff;
+            margin-bottom: 20px;
+            font-size: 24px;
+            letter-spacing: 1px;
+        }
+
+        .status-panel {
+            background: #2d3748;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #4a5568;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .status-label {
+            color: #a0aec0;
+            font-weight: 600;
+        }
+
+        .status-value {
+            color: #63b3ed;
+            font-family: monospace;
+        }
+
+        .return-port {
+            background: #1a202c;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            border: 10px solid #2d3748;
+            box-shadow: inset 0 10px 20px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shutter {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(45deg, #4a5568, #4a5568 10px, #2d3748 10px, #2d3748 20px);
+            transition: transform 0.5s ease-in-out;
+            z-index: 2;
+        }
+
+        .shutter.open {
+            transform: translateY(-100%);
+        }
+
+        .port-interior {
+            font-size: 40px;
+            color: #48bb78;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .port-interior.active {
+            opacity: 1;
+        }
+
+        .door-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: #48bb78;
+            color: #1a202c;
+        }
+
+        /* Green */
+        .btn-secondary {
+            background: #e53e3e;
+            color: white;
+        }
+
+        /* Red */
+        .btn-action {
+            background: #4299e1;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:disabled {
+            background: #718096;
+            color: #a0aec0;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .lock-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .indicator-light {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #e53e3e;
+            box-shadow: 0 0 10px #e53e3e;
+        }
+
+        .indicator-light.active {
+            background: #48bb78;
+            box-shadow: 0 0 10px #48bb78;
+        }
+
+        .interaction-area {
+            background: #2d3748;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .instruction {
+            font-size: 12px;
+            color: #a0aec0;
+            margin-bottom: 10px;
+        }
+
+        input#session-id {
+            background: transparent;
+            color: #63b3ed;
+            border: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="machine-container">
+        <h1>♻️ Reverse Vending Simulator</h1>
+
+        <div class="status-panel">
+            <div class="status-row">
+                <span class="status-label">Status:</span>
+                <span class="status-value" id="connection-status">Disconnected</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">Session:</span>
+                <input type="text" id="session-id" class="status-value" placeholder="-- Waiting --" readonly
+                    style="width:150px; text-align:right;">
+            </div>
+        </div>
+
+        <div class="lock-indicator">
+            <div id="lock-light" class="indicator-light"></div>
+            <span id="lock-text" style="font-weight:bold; color:#e53e3e;">LOCKED</span>
+        </div>
+
+        <div class="return-port">
+            <div class="shutter" id="port-shutter"></div>
+            <div class="port-interior" id="port-interior">⬇️</div>
+        </div>
+
+        <div class="door-controls">
+            <button id="btn-open-door" class="btn-primary" onclick="openDoor()" disabled>OPEN PORT</button>
+            <button id="btn-close-door" class="btn-secondary" onclick="closeDoor()" disabled>CLOSE PORT</button>
+        </div>
+
+        <div class="interaction-area">
+            <div class="instruction">SIMULATE INSERTION</div>
+            <button class="btn-action" onclick="placeReturnedItem(1)" id="btn-insert-eligible" disabled>Insert Eligible
+                Jar (Refund)</button>
+            <button class="btn-action" style="background:#ed8936;" onclick="placeReturnedItem(2)"
+                id="btn-insert-foreign" disabled>Insert Foreign Jar (Recycle)</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = '';
+        const API_URL = 'http://localhost:3000';
+        let isDoorOpen = false;
+        let isUnlocked = false;
+        let lastEventTimestamp = Date.now(); // Start from NOW - only show new events
+        let doorTimer = null;
+
+        // Poll for events from backend
+        async function pollEvents() {
+            try {
+                const res = await fetch(`${API_URL}/simulate/events?since=${lastEventTimestamp}`);
+                const data = await res.json();
+
+                if (data.events && data.events.length > 0) {
+                    data.events.forEach(e => {
+                        console.log(`[${e.source.toUpperCase()}] ${e.message}`);
+                        lastEventTimestamp = Math.max(lastEventTimestamp, e.timestamp);
+
+                        // Unlock Door Logic - Return Mode
+                        if (e.message.includes('Return Mode Active') || e.message.includes('Transaction Open')) {
+                            const parts = e.message.split(':');
+                            if (parts.length > 1) {
+                                const sid = parts[1].trim();
+                                document.getElementById('session-id').value = sid;
+                                currentSessionId = sid;
+                            }
+                            handleUnlock();
+                        }
+                    });
+                }
+            } catch (e) {
+                // silent
+            }
+        }
+
+        function handleUnlock() {
+            if (isUnlocked) return;
+
+            isUnlocked = true;
+            updateUI();
+
+            // Start 15s Timeout
+            if (doorTimer) clearTimeout(doorTimer);
+            doorTimer = setTimeout(() => {
+                console.log("Timeout: Port re-locked due to inactivity (15s)");
+                isUnlocked = false;
+                isDoorOpen = false;
+                updateUI();
+            }, 15000);
+        }
+
+        function updateUI() {
+            const btnOpen = document.getElementById('btn-open-door');
+            const btnClose = document.getElementById('btn-close-door');
+            const btnEligible = document.getElementById('btn-insert-eligible');
+            const btnForeign = document.getElementById('btn-insert-foreign');
+            const lockLight = document.getElementById('lock-light');
+            const lockText = document.getElementById('lock-text');
+            const shutter = document.getElementById('port-shutter');
+            const interior = document.getElementById('port-interior');
+            const statusEl = document.getElementById('connection-status');
+
+            // Update connection status
+            statusEl.textContent = currentSessionId ? 'Connected' : 'Disconnected';
+            statusEl.style.color = currentSessionId ? '#48bb78' : '#e53e3e';
+
+            if (isUnlocked) {
+                lockLight.classList.add('active');
+                lockText.textContent = 'UNLOCKED';
+                lockText.style.color = '#48bb78';
+
+                // Can open door if unlocked and not already open
+                btnOpen.disabled = isDoorOpen;
+                btnClose.disabled = !isDoorOpen;
+            } else {
+                lockLight.classList.remove('active');
+                lockText.textContent = 'LOCKED';
+                lockText.style.color = '#e53e3e';
+
+                btnOpen.disabled = true;
+                btnClose.disabled = true;
+            }
+
+            // Shutter animation
+            if (isDoorOpen) {
+                shutter.classList.add('open');
+                interior.classList.add('active');
+                btnEligible.disabled = false;
+                btnForeign.disabled = false;
+            } else {
+                shutter.classList.remove('open');
+                interior.classList.remove('active');
+                btnEligible.disabled = true;
+                btnForeign.disabled = true;
+            }
+        }
+
+        async function openDoor() {
+            if (!isUnlocked) return;
+
+            try {
+                await fetch(`${API_URL}/simulate/door-open`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: currentSessionId || 'return_manual' })
+                });
+                console.log("Port Open Signal Sent");
+                isDoorOpen = true;
+                updateUI();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function closeDoor() {
+            try {
+                await fetch(`${API_URL}/simulate/door-close`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: currentSessionId || 'return_manual' })
+                });
+                console.log("Port Close Signal Sent");
+                isDoorOpen = false;
+                isUnlocked = false;
+                updateUI();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function placeReturnedItem(scaleId) {
+            if (!isDoorOpen) return;
+            if (!currentSessionId) {
+                alert('No active session!');
+                return;
+            }
+
+            // Animate
+            const interior = document.getElementById('port-interior');
+            interior.innerHTML = scaleId === 1 ? '✅' : '♻️';
+            interior.classList.add('active');
+            setTimeout(() => {
+                interior.innerHTML = '⬇️';
+            }, 1000);
+
+            try {
+                const response = await fetch(`${API_URL}/simulate/item-returned`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        scale_id: scaleId
+                    })
+                });
+                const data = await response.json();
+                console.log('Item returned:', data);
+            } catch (e) {
+                console.error('Error returning item:', e);
+            }
+        }
+
+        // Initialize
+        updateUI();
+
+        // Poll every 1 second
+        setInterval(pollEvents, 1000);
+    </script>
+</body>
+
+</html>

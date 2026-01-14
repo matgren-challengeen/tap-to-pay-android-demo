@@ -1,25 +1,127 @@
-# Tap to Pay with Stripe - Android demo
+# Venloop Tap-to-Pay
 
-This is a small demo using Tap to Pay with Stripe for Android. The flow is kept very simple to focus on teaching developers how to integrate Tap to Pay with Stripe.
+Android application for the Venloop smart vending machine. Users tap their payment card to authenticate, unlock the door, and shop. The system uses Stripe Terminal SDK for card reading and Firebase Firestore for real-time session updates.
 
-If you want to learn how to add Tap to Pay to an Android app, check out the [blog post](https://dev.to/stripe/accept-payments-using-tap-to-pay-for-android-with-stripe-23ml), [tutorial video](https://youtu.be/2y0abSgxPXw) and [our docs](https://stripe.com/docs/terminal/payments/setup-reader/tap-to-pay?platform=android) for more information.
+## Features
 
+- **Card-based Login**: Tap to authenticate (via Stripe SetupIntent flow)
+- **Guest Support**: New cards automatically create guest accounts
+- **Real-time Shopping**: Live cart updates via Firebase Firestore
+- **Native UI**: Connect Reader → Shopping → Summary screens
 
-## Installation
+## Architecture
 
-You can clone this repo and run it using Android Studio. Using the Stripe Terminal SDK requires a back-end server to run, and it needs to be available with a public URL.
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Stripe Terminal│────▶│   Stub Backend  │────▶│    Firestore    │
+│      SDK        │     │  (or Medusa)    │     │   (real-time)   │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+         │                                               │
+         ▼                                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        Android App                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ MainActivity │  │  Repositories│  │  ViewModels  │          │
+│  │ (Stripe SDK) │  │  (Firebase)  │  │  (LiveData)  │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-In the `graddle.properties` file, you will find the variable `EXAMPLE_BACKEND_URL` where you need to indicate the URL to an app hosted and available publicly. If you want to get started quickly, you can clone [this example back-end](https://github.com/stripe/example-terminal-backend), update it to use your Stripe publishable and secret keys, host it on Render or any service that will give you a public URL, and replace the `EXAMPLE_BACKEND_URL` with it.
+## Requirements
 
-## Create a location
+- **Android Studio** Iguana or newer
+- **JDK 17** (required - JDK 25 causes KAPT issues)
+- **Kotlin 2.2.0**
+- Physical Android device with NFC (Tap to Pay requires real hardware)
 
-In the [Stripe dashboard](https://dashboard.stripe.com/terminal), you need to create at least one location to manage your reader.
+## Setup
 
-Once this is done, you should be able to run the application successfully.
+### 1. Clone & Configure
 
-## Demo
+```bash
+git clone <repo-url>
+cd tap-to-pay-venloop
+```
 
-Once you run the demo on your mobile device, you should see the following screens:
+Edit `gradle.properties`:
+```properties
+EXAMPLE_BACKEND_URL="http://YOUR_BACKEND_URL:3000/"
+```
 
-<img src="ttp-android-demo.gif"  width="60%" height="30%">
+### 2. Firebase Setup
 
+Place your `google-services.json` in `app/` directory.
+
+### 3. Stripe Location
+
+Create at least one [Terminal Location](https://dashboard.stripe.com/test/terminal/locations) in your Stripe Dashboard (**Test Mode**).
+
+### 4. Start Backend
+
+In a **separate terminal**, start the stub backend:
+
+```bash
+cd tap-to-pay-stub-backend
+npm install        # First time only
+npm run dev
+```
+
+The backend must be running at `http://YOUR_IP:3000` for the app to connect.
+
+### 5. Build & Run
+
+```bash
+./gradlew assembleDebug
+```
+
+Or open in Android Studio and run on a physical device.
+
+## Flow
+
+1. **Connect Reader** – App connects to phone's NFC (Local Mobile Reader)
+2. **Tap Card** – User taps payment card
+3. **SetupIntent** – Stripe captures payment method without charging
+4. **Login** – Backend authenticates user by card fingerprint
+5. **Shopping** – App listens to Firestore `sessions/{id}` for cart updates
+6. **Summary** – Door closes → Final total displayed
+
+## Project Structure
+
+```
+app/src/main/java/com/example/taptopayandroid/
+├── MainActivity.kt          # Stripe Terminal + login flow
+├── ApiClient.kt             # Backend API calls
+├── BackendService.kt        # Retrofit interface
+├── fragments/
+│   ├── ConnectReaderFragment.kt
+│   ├── ShoppingFragment.kt
+│   └── SummaryFragment.kt
+├── repository/
+│   ├── SessionRepository.kt  # Firestore listener
+│   └── CartRepository.kt     # Medusa cart API
+├── viewmodel/
+│   └── ShoppingViewModel.kt  # MVVM state management
+└── models/
+    ├── Cart.kt
+    └── StoreCartResponse.kt
+```
+
+## Backend
+
+For development, use `tap-to-pay-stub-backend` – a Node.js simulator that:
+- Generates real Stripe `SetupIntent` secrets
+- Mocks login responses
+- Writes to Firestore to simulate hardware events
+
+For production, connect to the Medusa backend with the `venloop-pos-plugin`.
+
+## Documentation
+
+See `/docs` for detailed specs:
+- `implementation_plan.md` – Technical architecture
+- `requirements_prd.md` – Product requirements
+- `task.md` – Implementation checklist
+
+## License
+
+Proprietary – Venloop
