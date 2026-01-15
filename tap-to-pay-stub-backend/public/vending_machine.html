@@ -170,6 +170,72 @@
         .interaction-area {
             margin-top: 20px;
         }
+
+        .qty-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .qty-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid #635bff;
+            background: white;
+            color: #635bff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            padding: 0;
+        }
+
+        .qty-btn:hover {
+            background: #635bff;
+            color: white;
+        }
+
+        .qty-value {
+            font-size: 18px;
+            font-weight: bold;
+            min-width: 24px;
+            text-align: center;
+            color: #1a1f36;
+        }
+
+        .qty-value.has-qty {
+            color: #635bff;
+        }
+
+        .btn-confirm {
+            width: 100%;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: #635bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-confirm:disabled {
+            background: #e3e8ee;
+            color: #a3acb9;
+            cursor: not-allowed;
+        }
+
+        .item-slot.has-selection {
+            border-color: #635bff;
+            background: #f4f7ff;
+        }
     </style>
 </head>
 
@@ -201,24 +267,42 @@
             <!-- Dimmed when door closed -->
             <p
                 style="text-align: left; color: #697386; font-size: 12px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
-                Products</p>
+                Products (Pick Items)</p>
             <div class="shelves" id="shelves">
-                <div class="item-slot active" onclick="pickItem(1)">
+                <div class="item-slot active" id="item-1">
                     <div style="font-size: 24px; margin-bottom: 5px;">🥤</div>
                     <div>Cola</div>
                     <div style="font-size: 12px; color: #697386;">$2.00</div>
+                    <div class="qty-controls">
+                        <button class="qty-btn" onclick="changeQty(1, -1)">−</button>
+                        <span id="qty-1" class="qty-value">0</span>
+                        <button class="qty-btn" onclick="changeQty(1, 1)">+</button>
+                    </div>
                 </div>
-                <div class="item-slot active" onclick="pickItem(2)">
+                <div class="item-slot active" id="item-2">
                     <div style="font-size: 24px; margin-bottom: 5px;">🥯</div>
                     <div>Bagel</div>
                     <div style="font-size: 12px; color: #697386;">$3.50</div>
+                    <div class="qty-controls">
+                        <button class="qty-btn" onclick="changeQty(2, -1)">−</button>
+                        <span id="qty-2" class="qty-value">0</span>
+                        <button class="qty-btn" onclick="changeQty(2, 1)">+</button>
+                    </div>
                 </div>
-                <div class="item-slot active" onclick="pickItem(3)">
+                <div class="item-slot active" id="item-3">
                     <div style="font-size: 24px; margin-bottom: 5px;">🍲</div>
-                    <div>Soup Jar (+ Deposit)</div>
-                    <div style="font-size: 12px; color: #697386;">$5.00 + $0.50</div>
+                    <div>Soup Jar</div>
+                    <div style="font-size: 11px; color: #697386;">$5.00 + $0.50 dep</div>
+                    <div class="qty-controls">
+                        <button class="qty-btn" onclick="changeQty(3, -1)">−</button>
+                        <span id="qty-3" class="qty-value">0</span>
+                        <button class="qty-btn" onclick="changeQty(3, 1)">+</button>
+                    </div>
                 </div>
             </div>
+            <button id="btn-confirm-pick" class="btn-confirm" onclick="confirmPick()" disabled>
+                Confirm Selection (<span id="total-items">0</span> items)
+            </button>
         </div>
         <div id="return-interface"
             style="display:none; background:#4a5568; padding:20px; color:white; border-radius:10px; margin-top:20px; width:100%; box-sizing:border-box;">
@@ -425,32 +509,85 @@
             } catch (e) { console.error(e); }
         }
 
-        async function pickItem(itemId) {
+        // Quantities for each product
+        const quantities = { 1: 0, 2: 0, 3: 0 };
+        const items = {
+            1: { price: 200, deposit: 0, name: "Cola", emoji: "🥤" },
+            2: { price: 350, deposit: 0, name: "Bagel", emoji: "🥯" },
+            3: { price: 500, deposit: 50, name: "Soup Jar", emoji: "🍲" }
+        };
+
+        function changeQty(itemId, delta) {
+            if (!isDoorOpen) return;
+
+            const newQty = Math.max(0, quantities[itemId] + delta);
+            quantities[itemId] = newQty;
+
+            // Update display
+            const qtyEl = document.getElementById(`qty-${itemId}`);
+            qtyEl.textContent = newQty;
+            qtyEl.classList.toggle('has-qty', newQty > 0);
+
+            // Update item slot styling
+            const itemEl = document.getElementById(`item-${itemId}`);
+            itemEl.classList.toggle('has-selection', newQty > 0);
+
+            updateTotals();
+        }
+
+        function updateTotals() {
+            const totalItems = Object.values(quantities).reduce((a, b) => a + b, 0);
+            document.getElementById('total-items').textContent = totalItems;
+            document.getElementById('btn-confirm-pick').disabled = totalItems === 0;
+        }
+
+        async function confirmPick() {
             const sessionId = currentSessionId || document.getElementById('session-id').value;
-            if (!sessionId) return alert("Please simulate door open / session creation first!");
-            if (!isDoorOpen) return alert("Door must be open to pick items!");
+            if (!sessionId) return alert("No active session!");
+            if (!isDoorOpen) return alert("Door must be open!");
 
-            const items = {
-                1: { price: 200, deposit: 0, name: "Venloop Cola" },
-                2: { price: 350, deposit: 0, name: "Venloop Bagel" },
-                3: { price: 500, deposit: 50, name: "Venloop Jar" } // cents
-            };
+            const totalItems = Object.values(quantities).reduce((a, b) => a + b, 0);
+            if (totalItems === 0) return;
 
-            const item = items[itemId];
+            log(`📦 Processing ${totalItems} items...`, "info");
 
-            try {
-                await fetch(`${baseUrl}/simulate/item-picked`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        session_id: sessionId,
-                        item_id: itemId,
-                        price: item.price,
-                        deposit: item.deposit
-                    })
-                });
-                log(`🛒 Picked: ${item.name} ($${(item.price / 100).toFixed(2)}${item.deposit ? ' + $0.50 deposit' : ''})`, "success");
-            } catch (e) { console.error(e); }
+            // Send each item to backend
+            for (const [itemId, qty] of Object.entries(quantities)) {
+                if (qty > 0) {
+                    const item = items[parseInt(itemId)];
+                    for (let i = 0; i < qty; i++) {
+                        try {
+                            await fetch(`${baseUrl}/simulate/item-picked`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    session_id: sessionId,
+                                    item_id: parseInt(itemId),
+                                    price: item.price,
+                                    deposit: item.deposit
+                                })
+                            });
+                        } catch (e) { console.error(e); }
+                    }
+                    log(`${item.emoji} ${item.name} x${qty} added`, "success");
+                }
+            }
+
+            // Reset quantities
+            for (const itemId in quantities) {
+                quantities[itemId] = 0;
+                document.getElementById(`qty-${itemId}`).textContent = '0';
+                document.getElementById(`qty-${itemId}`).classList.remove('has-qty');
+                document.getElementById(`item-${itemId}`).classList.remove('has-selection');
+            }
+            updateTotals();
+
+            log(`✅ ${totalItems} items confirmed!`, "success");
+        }
+
+        // Legacy function for backwards compatibility
+        async function pickItem(itemId) {
+            changeQty(itemId, 1);
         }
 
 

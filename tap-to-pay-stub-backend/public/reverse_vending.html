@@ -4,13 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reverse Vending Machine Simulator</title>
+    <title>Reverse Vending Simulator</title>
     <style>
-        /* Distinct Industrial/Recycling Theme */
         body {
-            font-family: 'Roboto', 'Segoe UI', sans-serif;
-            background-color: #2d3748;
-            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -18,29 +16,28 @@
         }
 
         .machine-container {
-            background: #4a5568;
+            background: #fff;
             padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 500px;
             text-align: center;
-            border: 4px solid #718096;
+            border: 1px solid #e1e4e8;
         }
 
         h1 {
-            color: #fff;
+            color: #1a1f36;
             margin-bottom: 20px;
             font-size: 24px;
-            letter-spacing: 1px;
         }
 
         .status-panel {
-            background: #2d3748;
+            background: #f7fafc;
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 20px;
-            border: 1px solid #4a5568;
+            border: 1px solid #edf2f7;
         }
 
         .status-row {
@@ -51,55 +48,42 @@
         }
 
         .status-label {
-            color: #a0aec0;
+            color: #697386;
             font-weight: 600;
         }
 
         .status-value {
-            color: #63b3ed;
+            color: #1a1f36;
             font-family: monospace;
         }
 
-        .return-port {
-            background: #1a202c;
-            width: 200px;
-            height: 200px;
-            margin: 0 auto 20px;
+        .indicator {
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            border: 10px solid #2d3748;
-            box-shadow: inset 0 10px 20px rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
+            display: inline-block;
+            margin-right: 5px;
         }
 
-        .shutter {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(45deg, #4a5568, #4a5568 10px, #2d3748 10px, #2d3748 20px);
-            transition: transform 0.5s ease-in-out;
-            z-index: 2;
+        .indicator.red {
+            background-color: #ef4444;
         }
 
-        .shutter.open {
-            transform: translateY(-100%);
+        .indicator.green {
+            background-color: #22c55e;
         }
 
-        .port-interior {
-            font-size: 40px;
-            color: #48bb78;
-            z-index: 1;
-            opacity: 0;
-            transition: opacity 0.3s;
+        .lock-status {
+            font-size: 48px;
+            margin: 10px 0;
         }
 
-        .port-interior.active {
-            opacity: 1;
+        .lock-status.locked {
+            color: #ef4444;
+        }
+
+        .lock-status.unlocked {
+            color: #22c55e;
         }
 
         .door-controls {
@@ -107,84 +91,173 @@
             gap: 10px;
             justify-content: center;
             margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #edf2f7;
         }
 
         button {
-            padding: 12px 24px;
+            padding: 10px 20px;
             border: none;
             border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
             font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
 
         .btn-primary {
-            background: #48bb78;
-            color: #1a202c;
+            background: #22c55e;
+            color: white;
         }
 
-        /* Green */
         .btn-secondary {
-            background: #e53e3e;
+            background: #3c4257;
             color: white;
-        }
-
-        /* Red */
-        .btn-action {
-            background: #4299e1;
-            color: white;
-            width: 100%;
-            margin-top: 10px;
         }
 
         button:disabled {
-            background: #718096;
-            color: #a0aec0;
+            background: #e3e8ee;
+            color: #a3acb9;
             cursor: not-allowed;
-            opacity: 0.7;
-        }
-
-        .lock-indicator {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .indicator-light {
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            background: #e53e3e;
-            box-shadow: 0 0 10px #e53e3e;
-        }
-
-        .indicator-light.active {
-            background: #48bb78;
-            box-shadow: 0 0 10px #48bb78;
         }
 
         .interaction-area {
-            background: #2d3748;
-            padding: 15px;
-            border-radius: 10px;
             margin-top: 20px;
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #edf2f7;
         }
 
-        .instruction {
-            font-size: 12px;
-            color: #a0aec0;
-            margin-bottom: 10px;
+        .shelves {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
         }
 
-        input#session-id {
-            background: transparent;
-            color: #63b3ed;
+        .item-slot {
+            background: #fff;
+            border: 2px solid #e3e8ee;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.2s;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .item-slot.active {
+            cursor: pointer;
+            border-color: #22c55e;
+            opacity: 1;
+            background: #f0fdf4;
+        }
+
+        .item-slot:hover.active {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(34, 197, 94, 0.1);
+        }
+
+        .qty-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .qty-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid #22c55e;
+            background: white;
+            color: #22c55e;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .qty-btn:hover {
+            background: #22c55e;
+            color: white;
+        }
+
+        .qty-value {
+            font-size: 18px;
+            font-weight: bold;
+            min-width: 24px;
+            text-align: center;
+            color: #1a1f36;
+        }
+
+        .qty-value.has-qty {
+            color: #22c55e;
+        }
+
+        .item-slot.has-selection {
+            border-color: #22c55e;
+            background: #f0fdf4;
+        }
+
+        .btn-confirm {
+            width: 100%;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: #22c55e;
+            color: white;
             border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-confirm:disabled {
+            background: #e3e8ee;
+            color: #a3acb9;
+            cursor: not-allowed;
+        }
+
+        .summary-box {
+            background: #f0fdf4;
+            border: 1px solid #22c55e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .summary-total {
+            font-size: 18px;
+            font-weight: bold;
+            color: #22c55e;
+            border-top: 1px solid #e3e8ee;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+
+        #log {
+            background: #fff;
+            height: 120px;
+            overflow-y: scroll;
+            border: 1px solid #e1e4e8;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            border-radius: 6px;
+            margin-top: 5px;
+            text-align: left;
         }
     </style>
 </head>
@@ -196,87 +269,124 @@
         <div class="status-panel">
             <div class="status-row">
                 <span class="status-label">Status:</span>
-                <span class="status-value" id="connection-status">Disconnected</span>
+                <span class="status-value" id="connection-status"><span class="indicator red"></span>Disconnected</span>
             </div>
             <div class="status-row">
                 <span class="status-label">Session:</span>
-                <input type="text" id="session-id" class="status-value" placeholder="-- Waiting --" readonly
-                    style="width:150px; text-align:right;">
+                <input type="text" id="session-id" class="status-value" placeholder="Waiting for app..." readonly
+                    style="border:none; background:transparent; text-align:right; width:150px;">
             </div>
         </div>
 
-        <div class="lock-indicator">
-            <div id="lock-light" class="indicator-light"></div>
-            <span id="lock-text" style="font-weight:bold; color:#e53e3e;">LOCKED</span>
-        </div>
-
-        <div class="return-port">
-            <div class="shutter" id="port-shutter"></div>
-            <div class="port-interior" id="port-interior">⬇️</div>
-        </div>
+        <div class="lock-status locked" id="lock-icon">🔒</div>
+        <div style="margin-bottom: 20px; font-weight: bold; color: #697386;" id="lock-text">LOCKED</div>
 
         <div class="door-controls">
-            <button id="btn-open-door" class="btn-primary" onclick="openDoor()" disabled>OPEN PORT</button>
-            <button id="btn-close-door" class="btn-secondary" onclick="closeDoor()" disabled>CLOSE PORT</button>
+            <button id="btn-open-door" class="btn-primary" onclick="openDoor()" disabled>Open Port</button>
+            <button id="btn-close-door" class="btn-secondary" onclick="closeDoor()" disabled>Close Port</button>
         </div>
 
-        <div class="interaction-area">
-            <div class="instruction">SIMULATE INSERTION</div>
-            <button class="btn-action" onclick="placeReturnedItem(1)" id="btn-insert-eligible" disabled>Insert Eligible
-                Jar (Refund)</button>
-            <button class="btn-action" style="background:#ed8936;" onclick="placeReturnedItem(2)"
-                id="btn-insert-foreign" disabled>Insert Foreign Jar (Recycle)</button>
+        <div class="interaction-area" id="shelves-area" style="opacity: 0.5; pointer-events: none;">
+            <p
+                style="text-align: left; color: #697386; font-size: 12px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                Return Jars</p>
+            <div class="shelves">
+                <div class="item-slot active" id="item-1">
+                    <div style="font-size: 24px; margin-bottom: 5px;">🫙</div>
+                    <div>Eligible Jar</div>
+                    <div style="font-size: 12px; color: #22c55e;">+$0.50 refund</div>
+                    <div class="qty-controls">
+                        <button class="qty-btn" onclick="changeQty(1, -1)">−</button>
+                        <span id="qty-1" class="qty-value">0</span>
+                        <button class="qty-btn" onclick="changeQty(1, 1)">+</button>
+                    </div>
+                </div>
+                <div class="item-slot active" id="item-2">
+                    <div style="font-size: 24px; margin-bottom: 5px;">🗑️</div>
+                    <div>Foreign Jar</div>
+                    <div style="font-size: 12px; color: #697386;">No refund</div>
+                    <div class="qty-controls">
+                        <button class="qty-btn" onclick="changeQty(2, -1)">−</button>
+                        <span id="qty-2" class="qty-value">0</span>
+                        <button class="qty-btn" onclick="changeQty(2, 1)">+</button>
+                    </div>
+                </div>
+            </div>
+            <button id="btn-confirm" class="btn-confirm" onclick="confirmReturn()" disabled>
+                Confirm (<span id="total-items">0</span> jars)
+            </button>
+
+            <div id="summary-box" class="summary-box" style="display: none;">
+                <div class="summary-row">
+                    <span>Eligible Jars:</span>
+                    <span id="eligible-count">0</span>
+                </div>
+                <div class="summary-row">
+                    <span>Foreign Jars:</span>
+                    <span id="foreign-count">0</span>
+                </div>
+                <div class="summary-row summary-total">
+                    <span>Total Refund:</span>
+                    <span id="total-refund">$0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="width:100%; margin-top:20px; text-align:left;">
+            <strong style="color:#697386; font-size:12px; text-transform:uppercase;">Device Log</strong>
+            <div id="log"></div>
         </div>
     </div>
 
     <script>
-        let currentSessionId = '';
-        const API_URL = 'http://localhost:3000';
+        const baseUrl = "";
+        let lastEventTimestamp = Date.now() - 30000;
+        let isDoorUnlocked = false;
         let isDoorOpen = false;
-        let isUnlocked = false;
-        let lastEventTimestamp = Date.now(); // Start from NOW - only show new events
         let doorTimer = null;
+        let currentSessionId = null;
+        let totalEligible = 0;
+        let totalForeign = 0;
 
-        // Poll for events from backend
+        const quantities = { 1: 0, 2: 0 };
+
         async function pollEvents() {
             try {
-                const res = await fetch(`${API_URL}/simulate/events?since=${lastEventTimestamp}`);
+                const res = await fetch(`${baseUrl}/simulate/events?since=${lastEventTimestamp}`);
                 const data = await res.json();
 
                 if (data.events && data.events.length > 0) {
                     data.events.forEach(e => {
-                        console.log(`[${e.source.toUpperCase()}] ${e.message}`);
+                        log(`[${e.source.toUpperCase()}] ${e.message}`, e.type);
                         lastEventTimestamp = Math.max(lastEventTimestamp, e.timestamp);
 
-                        // Unlock Door Logic - Return Mode
-                        if (e.message.includes('Return Mode Active') || e.message.includes('Transaction Open')) {
+                        if (e.message.includes('Return Mode Active') || e.message.includes('Session Created')) {
                             const parts = e.message.split(':');
                             if (parts.length > 1) {
                                 const sid = parts[1].trim();
-                                document.getElementById('session-id').value = sid;
                                 currentSessionId = sid;
+                                document.getElementById('session-id').value = sid;
                             }
                             handleUnlock();
                         }
                     });
                 }
-            } catch (e) {
-                // silent
-            }
+            } catch (e) { }
         }
 
         function handleUnlock() {
-            if (isUnlocked) return;
-
-            isUnlocked = true;
+            if (isDoorUnlocked) return;
+            isDoorUnlocked = true;
             updateUI();
+            log("🔓 Port UNLOCKED - You have 15 seconds!", "success");
 
-            // Start 15s Timeout
             if (doorTimer) clearTimeout(doorTimer);
             doorTimer = setTimeout(() => {
-                console.log("Timeout: Port re-locked due to inactivity (15s)");
-                isUnlocked = false;
+                log("⏰ TIMEOUT: Port re-locked", "warning");
+                isDoorUnlocked = false;
                 isDoorOpen = false;
+                currentSessionId = null;
+                document.getElementById('session-id').value = '';
                 updateUI();
             }, 15000);
         }
@@ -284,118 +394,159 @@
         function updateUI() {
             const btnOpen = document.getElementById('btn-open-door');
             const btnClose = document.getElementById('btn-close-door');
-            const btnEligible = document.getElementById('btn-insert-eligible');
-            const btnForeign = document.getElementById('btn-insert-foreign');
-            const lockLight = document.getElementById('lock-light');
+            const lockIcon = document.getElementById('lock-icon');
             const lockText = document.getElementById('lock-text');
-            const shutter = document.getElementById('port-shutter');
-            const interior = document.getElementById('port-interior');
+            const shelvesArea = document.getElementById('shelves-area');
             const statusEl = document.getElementById('connection-status');
 
-            // Update connection status
-            statusEl.textContent = currentSessionId ? 'Connected' : 'Disconnected';
-            statusEl.style.color = currentSessionId ? '#48bb78' : '#e53e3e';
+            statusEl.innerHTML = currentSessionId
+                ? '<span class="indicator green"></span>Connected'
+                : '<span class="indicator red"></span>Disconnected';
 
-            if (isUnlocked) {
-                lockLight.classList.add('active');
-                lockText.textContent = 'UNLOCKED';
-                lockText.style.color = '#48bb78';
+            if (isDoorUnlocked) {
+                lockIcon.innerText = "🔓";
+                lockIcon.className = "lock-status unlocked";
+                lockText.innerText = "UNLOCKED";
 
-                // Can open door if unlocked and not already open
-                btnOpen.disabled = isDoorOpen;
-                btnClose.disabled = !isDoorOpen;
+                if (isDoorOpen) {
+                    btnOpen.disabled = true;
+                    btnClose.disabled = false;
+                    shelvesArea.style.opacity = "1.0";
+                    shelvesArea.style.pointerEvents = "auto";
+                } else {
+                    btnOpen.disabled = false;
+                    btnClose.disabled = true;
+                    shelvesArea.style.opacity = "0.5";
+                    shelvesArea.style.pointerEvents = "none";
+                }
             } else {
-                lockLight.classList.remove('active');
-                lockText.textContent = 'LOCKED';
-                lockText.style.color = '#e53e3e';
-
                 btnOpen.disabled = true;
                 btnClose.disabled = true;
-            }
-
-            // Shutter animation
-            if (isDoorOpen) {
-                shutter.classList.add('open');
-                interior.classList.add('active');
-                btnEligible.disabled = false;
-                btnForeign.disabled = false;
-            } else {
-                shutter.classList.remove('open');
-                interior.classList.remove('active');
-                btnEligible.disabled = true;
-                btnForeign.disabled = true;
+                lockIcon.innerText = "🔒";
+                lockIcon.className = "lock-status locked";
+                lockText.innerText = "LOCKED";
+                shelvesArea.style.opacity = "0.5";
+                shelvesArea.style.pointerEvents = "none";
             }
         }
 
-        async function openDoor() {
-            if (!isUnlocked) return;
+        updateUI();
 
+        async function openDoor() {
+            if (!isDoorUnlocked) return;
             try {
-                await fetch(`${API_URL}/simulate/door-open`, {
+                await fetch(`${baseUrl}/simulate/door-open`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session_id: currentSessionId || 'return_manual' })
+                    body: JSON.stringify({ session_id: currentSessionId || 'manual' })
                 });
-                console.log("Port Open Signal Sent");
+                log("🚪 Port OPENED - Insert jars!", "success");
                 isDoorOpen = true;
+                if (doorTimer) clearTimeout(doorTimer);
                 updateUI();
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         async function closeDoor() {
             try {
-                await fetch(`${API_URL}/simulate/door-close`, {
+                await fetch(`${baseUrl}/simulate/door-close`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session_id: currentSessionId || 'return_manual' })
+                    body: JSON.stringify({ session_id: currentSessionId || 'manual' })
                 });
-                console.log("Port Close Signal Sent");
+                log("🚪 Port CLOSED - Session complete!", "info");
+                isDoorUnlocked = false;
                 isDoorOpen = false;
-                isUnlocked = false;
+                currentSessionId = null;
+                document.getElementById('session-id').value = '';
+
+                // Show final summary
+                if (totalEligible > 0 || totalForeign > 0) {
+                    log(`💰 Session Total: ${totalEligible} eligible, ${totalForeign} foreign = $${(totalEligible * 0.50).toFixed(2)} refund`, "success");
+                }
+                totalEligible = 0;
+                totalForeign = 0;
                 updateUI();
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
 
-        async function placeReturnedItem(scaleId) {
+        function changeQty(itemId, delta) {
             if (!isDoorOpen) return;
-            if (!currentSessionId) {
-                alert('No active session!');
-                return;
-            }
+            const newQty = Math.max(0, quantities[itemId] + delta);
+            quantities[itemId] = newQty;
 
-            // Animate
-            const interior = document.getElementById('port-interior');
-            interior.innerHTML = scaleId === 1 ? '✅' : '♻️';
-            interior.classList.add('active');
-            setTimeout(() => {
-                interior.innerHTML = '⬇️';
-            }, 1000);
+            document.getElementById(`qty-${itemId}`).textContent = newQty;
+            document.getElementById(`qty-${itemId}`).classList.toggle('has-qty', newQty > 0);
+            document.getElementById(`item-${itemId}`).classList.toggle('has-selection', newQty > 0);
 
-            try {
-                const response = await fetch(`${API_URL}/simulate/item-returned`, {
+            updateTotals();
+        }
+
+        function updateTotals() {
+            const total = quantities[1] + quantities[2];
+            document.getElementById('total-items').textContent = total;
+            document.getElementById('btn-confirm').disabled = total === 0;
+
+            // Update summary
+            document.getElementById('eligible-count').textContent = totalEligible + quantities[1];
+            document.getElementById('foreign-count').textContent = totalForeign + quantities[2];
+            document.getElementById('total-refund').textContent = `$${((totalEligible + quantities[1]) * 0.50).toFixed(2)}`;
+            document.getElementById('summary-box').style.display = (totalEligible + totalForeign + quantities[1] + quantities[2]) > 0 ? 'block' : 'none';
+        }
+
+        async function confirmReturn() {
+            if (!currentSessionId) return alert("No active session!");
+            if (!isDoorOpen) return;
+
+            const eligible = quantities[1];
+            const foreign = quantities[2];
+            if (eligible === 0 && foreign === 0) return;
+
+            log(`📦 Processing ${eligible + foreign} jars...`, "info");
+
+            // Send to backend
+            for (let i = 0; i < eligible; i++) {
+                await fetch(`${baseUrl}/simulate/item-returned`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        session_id: currentSessionId,
-                        scale_id: scaleId
-                    })
+                    body: JSON.stringify({ session_id: currentSessionId, scale_id: 1 })
                 });
-                const data = await response.json();
-                console.log('Item returned:', data);
-            } catch (e) {
-                console.error('Error returning item:', e);
             }
+            for (let i = 0; i < foreign; i++) {
+                await fetch(`${baseUrl}/simulate/item-returned`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: currentSessionId, scale_id: 2 })
+                });
+            }
+
+            if (eligible > 0) log(`🫙 ${eligible} Eligible Jars (+$${(eligible * 0.50).toFixed(2)})`, "success");
+            if (foreign > 0) log(`🗑️ ${foreign} Foreign Jars (recycled)`, "info");
+
+            totalEligible += eligible;
+            totalForeign += foreign;
+
+            // Reset
+            quantities[1] = 0;
+            quantities[2] = 0;
+            document.getElementById('qty-1').textContent = '0';
+            document.getElementById('qty-2').textContent = '0';
+            document.getElementById('qty-1').classList.remove('has-qty');
+            document.getElementById('qty-2').classList.remove('has-qty');
+            document.getElementById('item-1').classList.remove('has-selection');
+            document.getElementById('item-2').classList.remove('has-selection');
+            updateTotals();
         }
 
-        // Initialize
-        updateUI();
-
-        // Poll every 1 second
         setInterval(pollEvents, 1000);
+
+        function log(msg, type = 'info') {
+            const el = document.getElementById('log');
+            if (!el) return;
+            const colors = { 'success': '#22c55e', 'error': '#ef4444', 'warning': '#f59e0b', 'info': '#3b82f6' };
+            const color = colors[type] || '#333';
+            el.innerHTML = `<div style="color: ${color}; font-weight: ${type !== 'info' ? 'bold' : 'normal'}">${new Date().toLocaleTimeString()} - ${msg}</div>` + el.innerHTML;
+        }
     </script>
 </body>
 
