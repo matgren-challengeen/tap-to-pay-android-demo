@@ -67,27 +67,15 @@
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
-            <!-- Optional Email Section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:gravity="center"
-                android:text="Link your account for discounts and container history.\nProvide your email — only a matching email + card pair will authorize you."
-                android:textColor="#666666"
-                android:textSize="12sp" />
+            <ImageView
+                android:layout_width="160dp"
+                android:layout_height="80dp"
+                android:layout_marginTop="16dp"
+                android:src="@drawable/tap_card_hint"
+                android:scaleType="fitCenter"
+                />
 
-            <EditText
-                android:id="@+id/email_input"
-                android:layout_width="match_parent"
-                android:layout_height="46dp"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/input_background"
-                android:hint="email: (optional)"
-                android:inputType="textEmailAddress"
-                android:paddingHorizontal="12dp"
-                android:textColor="#333333"
-                android:textSize="14sp" />
+            <!-- Email section removed from here -->
 
             <Button
                 android:id="@+id/connect_reader_button"
@@ -270,16 +258,54 @@
 
         </LinearLayout>
 
+        <!-- Optional Email Section - Moved below steps -->
+        <LinearLayout
+            android:id="@+id/email_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:layout_marginHorizontal="16dp"
+            android:background="#FAFAFA"
+            android:orientation="vertical"
+            android:padding="16dp"
+            app:layout_constraintTop_toBottomOf="@id/instructions_section">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Link your account for discounts and container history.\nProvide your email — only a matching email + card pair will authorize you."
+                android:textColor="#666666"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/email_input"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/input_background"
+                android:hint="email: (optional)"
+                android:inputType="textEmailAddress"
+                android:paddingHorizontal="12dp"
+                android:textColor="#333333"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
         <!-- Return Containers Section (under steps, similar style) -->
         <LinearLayout
             android:id="@+id/return_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="16dp"
             android:layout_marginHorizontal="16dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            app:layout_constraintTop_toBottomOf="@id/instructions_section">
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="8dp"
+            app:layout_constraintTop_toBottomOf="@id/email_section">
 
             <LinearLayout
                 android:layout_width="48dp"
@@ -317,14 +343,12 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <Button
-                android:id="@+id/return_containers_button"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:backgroundTint="#4CAF50"
-                android:text="Start"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp" />
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_media_play"
+                android:tint="#4CAF50"
+                android:rotation="180"/>
         </LinearLayout>
 
         <!-- Settings Button at Bottom -->

@@ -29,6 +29,12 @@
 - [x] **UI Layer**: Build Native Shopping Screen (RecyclerView/Compose) <!-- id: 18 -->
 - [x] **UI Layer**: Build Native Summary Screen <!-- id: 19 -->
 
+## Implementation Phase 3: Refinement & Certification
+- [x] **UI Polish**: Brand colors (Orange), Layout improvements <!-- id: 27 -->
+- [x] **Settings Screen**: Password protected admin area <!-- id: 28 -->
+- [x] **Emulator Support**: Bypass hardware requirement for testing <!-- id: 29 -->
+- [x] **Certification Prep**: PCI Checklist & Guide (`docs/stripe_certification_guide.md`) <!-- id: 30 -->
+
 
 
 

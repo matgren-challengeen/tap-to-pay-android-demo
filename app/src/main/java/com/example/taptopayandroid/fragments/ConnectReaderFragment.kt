@@ -91,7 +91,7 @@ class ConnectReaderFragment : Fragment() {
             (activity as? NavigationListener)?.onStartLoginFlow(email)
         }
 
-        view.findViewById<Button>(R.id.return_containers_button)?.setOnClickListener {
+        view.findViewById<View>(R.id.return_section)?.setOnClickListener {
             (activity as? NavigationListener)?.onStartReturnFlow()
         }
         

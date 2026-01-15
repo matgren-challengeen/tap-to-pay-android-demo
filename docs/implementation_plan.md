@@ -5,11 +5,18 @@ Enable a seamless "Tap to Pay" experience where users can unlock a vending machi
 
 ## User Review Required
 > [!IMPORTANT]
-> **Stripe Certification Risk**: We cannot read the raw "Card ID" (PAN). We must use the **Card Fingerprint** provided by Stripe after a tap. This fingerprint is unique to your Stripe account.
-> **Logic Gap**: The current `venloop-pos-plugin` attaches cards to users but **does not store the fingerprint** locally. We cannot currently "find a user by card". We must add this.
+> **Stripe Certification Requirement**: We use the **Pre-Auth + Capture** pattern:
+> 1. At tap: Create PaymentIntent with `capture_method: 'manual'` → Card is **present** during authorization
+> 2. At door close: Backend captures the final amount
+> 
+> This is the ONLY pattern that works for Stripe Terminal certification. Do NOT use SetupIntent (that's for off-session/card-not-present).
 
-> [!WARNING]
-> **Guest Flow**: A "Guest" in this context is just a Customer with no email/password but with an attached PaymentMethod. We must ensure we capture the `PaymentMethod` correctly to charge it *after* the vending session closes.
+> [!IMPORTANT]
+> **Card Fingerprint for Customer ID**: We extract `fingerprint` from the authorized PaymentIntent to identify returning customers. The `venloop-pos-plugin` must store fingerprints in Customer metadata.
+
+> [!NOTE]
+> **Guest Flow**: A \"Guest\" is a Customer with no email/password, identified only by card fingerprint. The pre-authorized PaymentIntent guarantees funds are blocked before the door opens.
+
 
 ## lightweight Principles (Revised)
 To keep development fast and simple (MVP style), we will avoid over-engineering.
@@ -28,29 +35,32 @@ To keep development fast and simple (MVP style), we will avoid over-engineering.
 
 ## Proposed Changes
 
-### Strategic Pivot: The Stub Backend
-We will use a **Stub Backend** (Simulator) for the entire development lifecycle.
-*   **Why?** Allows us to simulate the "Tunnel Scenario" (Fail Safe) and "Card Declined" scenarios easily, which are hard to reproduce with a real backend/Stripe.
-*   **Production Deployment**: We will release the app connected to the real backend only in Phase 4.
-*   **Stripe Review**: We will submit the app pointed to the **Production Backend** (in Test Mode logic) for review. We CANNOT submit with the Stub.
+### Strategic Pivot: The Stub Backend as API Contract
+We will use a **Stub Backend** (Simulator) for the entire development lifecycle. The Stub defines the **API contract** that Medusa must implement later.
+
+*   **Why?** Allows us to simulate edge cases and develop without risking the production backend.
+*   **Migration Strategy**: When ready, change only `BACKEND_URL` – the API contract is identical.
+*   **API Contract**: See [api_contract.md](file:///Users/maciejgren/Documents/Venloop/tap-to-pay-venloop/docs/api_contract.md) for full specification.
 
 ---
 
 ### Phase 1: Stub Backend (The Simulator)
-**Objective**: Build a controlled environment to develop the Android App without risking the production backend.
+**Objective**: Build a controlled environment with the exact API that Medusa will implement.
 *   **Tech Stack**: Node.js, Express, TypeScript, Firestore Admin SDK.
 *   **Constraint**: Do NOT use Railway. Run locally or via simple cloud functions.
-*   **Why**: We need to simulate edge cases (Declines, Network Latency, Door Open events) that are difficult or slow to reproduce with physical hardware and the real Medusa backend.
 
 > [!IMPORTANT]
 > **Network Binding**: The server MUST bind to `0.0.0.0` (not `localhost`) so it's accessible from the physical Android device on the same WiFi network.
 
-**Key Deliverables:**
-1.  **Connection Token** *(Critical)*: An endpoint `POST /connection_token` that calls `stripe.terminal.connectionTokens.create()` and returns `{ secret: "..." }`. This is **required by Stripe Terminal SDK** to authenticate before any reader operations.
-2.  **Stripe Wrapper**: An endpoint `POST /store/auth/prepare-setup` that creates a `SetupIntent` and returns `{ secret: "seti_..." }`. This allows the Android SDK to capture payment methods.
-3.  **Mock Auth**: An endpoint `POST /store/auth/login-by-card` that accepts `payment_method_id` and returns a mock session `{ session_id: "...", customer_id: "..." }`.
-4.  **Mock Hardware Trigger**: Endpoints `POST /simulate/door-open` and `POST /simulate/item-picked`.
-5.  **Firestore Writer**: The Stub will write to the *Real* Firestore (Test Collection) to trigger the Android App's real-time listeners.
+**Key Endpoints (Pre-Auth Pattern):**
+1.  **`POST /connection_token`** – Returns Stripe Terminal connection token
+2.  **`POST /create_payment_intent`** – Creates PaymentIntent with `capture_method: 'manual'`
+3.  **`POST /store/auth/login-by-payment`** – Accepts `payment_intent_id`, returns `session_id` and `customer_id`
+4.  **`POST /capture_payment_intent`** – Captures authorized PaymentIntent (called on door close)
+5.  **`POST /cancel_payment_intent`** – Cancels PaymentIntent (if cart is empty)
+6.  **`GET /store/carts/{id}`** – Returns cart data
+7.  **Simulation endpoints**: `/simulate/door-open`, `/simulate/item-picked`, `/simulate/door-close`
+8.  **Firestore Writer**: Updates `sessions/{session_id}` for real-time app notifications
 
 **API Response Formats:**
 | Endpoint | Response Format |
@@ -187,43 +197,55 @@ We will verify these scenarios manually using the Simulator (Phase 1/2) and then
 
 ### 3. `tap-to-pay-venloop` (Android App)
 #### Architecture Overview
-The app currently uses a standard "Payment Intent" flow. We will modify this to a "Save Card / Login" flow.
+The app uses a **Pre-Authorization + Capture** flow, which is the only correct pattern for Stripe Terminal with vending machines.
 *   **Base URL**: Configurable to point to Stub (`http://10.0.2.2:3000`) or Real Backend.
 
-**New Flow Diagram:**
+> [!IMPORTANT]
+> **Why Pre-Auth, NOT SetupIntent?**
+> - SetupIntent = "save card, charge later off-session" = **card-not-present** (WRONG for Tap to Pay)
+> - PaymentIntent with `capture_method: 'manual'` = **card-present authorization** (CORRECT)
+> - Stripe certification requires the card to be **present during authorization**
+
+**Correct Flow Diagram:**
 1.  **Initialize**: `Terminal.initTerminal()`
 2.  **Connect**: `Terminal.connectLocalMobileReader()`
-3.  **Tap**: `Terminal.collectPaymentMethod()` **(No Payment Intent)**
-    *   *Note*: We must use `collectPaymentMethod` *without* a PaymentIntent to just read the card.
-4.  **Login**: Send `PaymentMethod.id` to `POST /store/auth/login-by-card`.
-5.  **Session**: Receive `customer_id` / `session_token` / `session_id`.
-6.  **Subscribe**: Listen to Firestore `sessions/{session_id}`.
-7.  **Shop**: Update Native UI in real-time as Backend updates Firestore.
-8.  **Close**: When door closes (Firestore status 'completed'), show Native Summary.
+3.  **Backend**: App calls `POST /store/auth/create-payment-intent` with `amount: MAX_VENDING_AMOUNT` (e.g., $50)
+4.  **Tap**: App calls `Terminal.collectPaymentMethod(paymentIntent)` → User taps card
+5.  **Authorize**: App calls `Terminal.confirmPaymentIntent()` → Stripe pre-authorizes (blocks funds)
+6.  **Identify**: App sends `payment_intent_id` to `POST /store/auth/login-by-payment`
+7.  **Session**: Backend extracts `fingerprint` from PaymentIntent, finds/creates Customer, returns `session_id`
+8.  **Unlock**: Backend triggers door unlock via MQTT
+9.  **Subscribe**: App listens to Firestore `sessions/{session_id}`
+10. **Shop**: User picks items → Hardware notifies Backend → Backend updates Firestore → App shows cart
+11. **Close**: Door closes → Backend receives MQTT event
+12. **Capture**: Backend calls `PaymentIntent.capture(amount: FINAL_AMOUNT)` (can be less than pre-auth)
+13. **Complete**: Backend updates Firestore `status: 'completed'` → App shows Summary
 
 #### [MODIFY] `ApiClient.kt`
 - **Current**: Has `createPaymentIntent` and `capturePaymentIntent`.
+- **Keep**: `createPaymentIntent` – used to create pre-auth at MAX amount
+- **Keep**: `capturePaymentIntent` – called by backend (not app) after door closes
 - **New Methods**:
-    - `loginByCard(paymentMethodId: String, callback: Callback<LoginResponse>)`: Calls our new `venloop-pos-plugin` endpoint.
+    - `loginByPayment(paymentIntentId: String, callback: Callback<LoginResponse>)`: Sends authorized PaymentIntent to backend for customer identification.
 
 #### [MODIFY] `MainActivity.kt`
-- **Objective**: Change the UX from "Enter Amount -> Tap" to "Tap to Login".
-- **Step 1**: Remove `collectPayment` triggering.
-- **Step 2**: Implement `startLoginFlow()`.
-    - Call Backend: `POST /store/auth/prepare-setup` (New endpoint or reuse intent creation? Better to keep it clean).
-    - **Better Approach**: We don't actually need a `SetupIntent` to *read* a card for simple ID purposes if we use `readReusableCard`.
-    - **Constraint**: `readReusableCard` is only for "Intermittent" usage. For a main login flow, Stripe advises `collectPaymentMethod` with a `SetupIntent`.
-    - **Selected Path**: **SetupIntent**.
-    - **Why?** It's the most robust way to get a `PaymentMethod` that we can later charge off-session. 
-    - **Logic**:
-        1.  App calls `POST /store/auth/prepare-setup`.
-        2.  Backend creates `SetupIntent` (allows "filtering" attached to a generic/temp customer if needed, although we want to Identify. So we might need to attach to a *temporary* Guest customer or just use it to capture the PM).
-        3.  Backend returns `client_secret`.
-        4.  App calls `Terminal.collectPaymentMethod(setupIntentSecret)`.
-        5.  App calls `Terminal.confirmSetupIntent`.
-        6.  App gets `SetupIntent.paymentMethodId`.
-        7.  App calls `POST /store/auth/login-by-card { payment_method_id }`.
-        8.  Backend links PM to User (or creates Guest) and returns Session.
+- **Objective**: Implement "Tap to Pre-Authorize" flow.
+- **Logic**:
+    1.  App calls `POST /store/auth/create-payment-intent { amount: 5000, capture_method: 'manual' }`.
+    2.  Backend creates PaymentIntent and returns `client_secret`.
+    3.  App retrieves PaymentIntent: `Terminal.retrievePaymentIntent(clientSecret)`.
+    4.  App collects payment: `Terminal.collectPaymentMethod(paymentIntent)`.
+    5.  User taps card → App confirms: `Terminal.confirmPaymentIntent(paymentIntent)`.
+    6.  Stripe authorizes (pre-auth) → PaymentIntent status = `requires_capture`.
+    7.  App calls `POST /store/auth/login-by-payment { payment_intent_id }`.
+    8.  Backend extracts `fingerprint`, identifies/creates Customer, stores `payment_intent_id` in session.
+    9.  Backend unlocks door, returns `session_id`.
+    10. App subscribes to Firestore and shows Shopping screen.
+
+> [!NOTE]
+> **Capture happens on Backend, NOT App!**
+> When door closes, Backend receives MQTT event and calls `stripe.paymentIntents.capture(id, { amount_to_capture: finalAmount })`.
+> This ensures the user cannot manipulate the final charge.
 
 #### [NEW] `managers/FirebaseManager.kt`
 - **Purpose**: Handles Firestore connection.

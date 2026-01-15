@@ -95,7 +95,8 @@ class ShoppingFragment : Fragment() {
                     id = group.first().id,
                     title = title,
                     quantity = group.sumOf { it.quantity },
-                    unit_price = group.first().unit_price
+                    unit_price = group.first().unit_price,
+                    thumbnail = group.first().thumbnail
                 )
             }
     }

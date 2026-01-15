@@ -1,51 +1,87 @@
 # Sequence Diagrams: Venloop Tap to Pay Flow
 
-## 1. Flow: Standard Purchase (Virtual or Real)
+## 1. Flow: Standard Purchase with Pre-Auth + Capture (CORRECT)
 
-This flow covers users buying items (Standard or Jars with Deposit).
-Auth provided via Emulator (Simulate Tap) or Real Device (NFC Tap).
+This flow shows the **Stripe-certified** pattern: Pre-authorize at tap, Capture at door close.
+
+> [!IMPORTANT]
+> The card MUST be present during authorization (tap). Capture happens server-side when door closes.
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant App
-    participant Stub
-    participant Sim as Simulator UI
+    participant App as Android App
+    participant Stripe as Stripe API
+    participant Backend as Medusa/Backend
+    participant HW as Hardware (MQTT)
+    participant FB as Firebase
 
-    Note over User, Sim: Phase 1: Authentication
-    User->>App: Taps Card (or Simulates Tap)
-    App->>Stub: POST /login-by-card
-    Stub->>Sim: Event "Transaction Open"
+    Note over User, FB: Phase 1: Pre-Authorization (Card Present)
     
-    Note over Sim: "OPEN DOOR" Button Unlocks
+    User->>App: Opens app, sees "Tap to Pay"
+    App->>Backend: POST /store/auth/create-payment-intent<br/>{amount: 5000, capture_method: 'manual'}
+    Backend->>Stripe: paymentIntents.create()
+    Stripe-->>Backend: {client_secret, id}
+    Backend-->>App: {client_secret, payment_intent_id}
     
-    Note over User, Sim: Phase 2: Shopping
-    User->>Sim: Clicks "OPEN DOOR"
-    Sim->>Stub: POST /simulate/door-open
+    App->>App: Terminal.retrievePaymentIntent(client_secret)
+    App->>App: Terminal.collectPaymentMethod(paymentIntent)
+    User->>App: 💳 Taps Card
+    App->>App: Terminal.confirmPaymentIntent()
+    App->>Stripe: Confirm (via Terminal SDK)
+    Stripe-->>App: PaymentIntent status = requires_capture
     
-    rect rgb(240, 240, 255)
-        Note right of User: Scenario A: Standard Item
-        User->>Sim: Clicks "Pick Cola"
-        Sim->>Stub: POST /simulate/item-picked (Price)
-        Stub->>Stub: Add "Cola" to Cart
-    end
-
-    rect rgb(255, 240, 255)
-        Note right of User: Scenario B: Jar with Deposit
-        User->>Sim: Clicks "Pick Soup Jar"
-        Sim->>Stub: POST /simulate/item-picked (Price + Deposit)
-        Stub->>Stub: Add "Soup" + "Deposit" to Cart
-    end
-
-    Stub-->>App: Firestore Update
-    App->>User: Shows Cart Items
-
-    Note over User, Sim: Phase 3: Completion
-    User->>Sim: Clicks "CLOSE DOOR"
-    Sim->>Stub: POST /simulate/door-close
-    Stub->>Stub: Finalize Session
-    App->>User: Shows Summary Screen
+    Note over App, Stripe: ✅ $50 blocked on card (Pre-Auth)
+    
+    App->>Backend: POST /store/auth/login-by-payment<br/>{payment_intent_id}
+    Backend->>Stripe: paymentIntents.retrieve(id)
+    Stripe-->>Backend: {fingerprint, payment_method_details}
+    Backend->>Backend: Find/Create Customer by fingerprint
+    Backend->>FB: Create session/{session_id}
+    Backend->>HW: MQTT: unlock_door
+    Backend-->>App: {session_id, customer_id}
+    
+    Note over User, FB: Phase 2: Shopping (Realtime Updates)
+    
+    App->>FB: Subscribe to sessions/{session_id}
+    HW-->>User: 🚪 Door Unlocks
+    User->>HW: Opens door, picks items
+    HW->>Backend: MQTT: item_picked {item, price}
+    Backend->>FB: Update cart in session
+    FB-->>App: Cart update event
+    App->>User: Shows updated cart
+    
+    Note over User, FB: Phase 3: Capture (Backend-Driven)
+    
+    User->>HW: Closes door
+    HW->>Backend: MQTT: door_closed
+    Backend->>Backend: Calculate final amount ($12.50)
+    Backend->>Stripe: paymentIntents.capture(id, {amount: 1250})
+    Stripe-->>Backend: PaymentIntent status = succeeded
+    
+    Note over Backend, Stripe: ✅ $12.50 captured, $37.50 released
+    
+    Backend->>FB: Update session: status='completed', total=1250
+    FB-->>App: Status = completed
+    App->>User: Shows Summary: "Thank you! $12.50"
 ```
+
+## 1b. Flow: Zero Amount Session (User Opened Door But Took Nothing)
+
+```mermaid
+sequenceDiagram
+    participant Backend as Medusa/Backend
+    participant Stripe as Stripe API
+    
+    Note over Backend, Stripe: Door closed, cart is empty
+    
+    Backend->>Backend: Final amount = $0
+    Backend->>Stripe: paymentIntents.cancel(id)
+    Stripe-->>Backend: PaymentIntent status = canceled
+    
+    Note over Backend, Stripe: ✅ Pre-auth released, no charge
+```
+
 
 ## 2. Flow: Timeout Sequence (No Action)
 
