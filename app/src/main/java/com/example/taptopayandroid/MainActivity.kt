@@ -281,11 +281,11 @@ class MainActivity : AppCompatActivity(), NavigationListener {
         })
     }
 
-    private fun handleAuthSuccess(pmId: String) {
+    private fun handleAuthSuccess(paymentIntentId: String) {
         if (isReturnMode) {
-            performReturnLogin(pmId)
+            performReturnLogin(paymentIntentId)
         } else {
-            performLogin(pmId)
+            performLoginByPayment(paymentIntentId)
         }
     }
 
@@ -338,8 +338,12 @@ class MainActivity : AppCompatActivity(), NavigationListener {
         connectReader()
     }
 
+    // Maximum pre-authorization amount in cents (e.g., $50)
+    private val MAX_PREAUTH_AMOUNT = 5000L
+    private val CURRENCY = "usd"
+    
     override fun onStartLoginFlow(email: String?) {
-        Log.d("MainActivity", "Starting login flow with email: $email")
+        Log.d("MainActivity", "Starting Pre-Auth login flow with email: $email")
         
         // In emulator mode, bypass Terminal SDK and directly simulate login
         if (DeviceUtils.isEmulator()) {
@@ -348,23 +352,32 @@ class MainActivity : AppCompatActivity(), NavigationListener {
                 Toast.makeText(this@MainActivity, "Simulating Card Tap (Emulator Mode)", Toast.LENGTH_SHORT).show()
             }
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                handleAuthSuccess("emulator_pm_${System.currentTimeMillis()}")
+                handleAuthSuccess("emulator_pi_${System.currentTimeMillis()}")
             }, 500)
             return
         }
         
-        ApiClient.prepareSetup(object : Callback<PrepareSetupResponse> {
-            override fun onResponse(call: Call<PrepareSetupResponse>, response: Response<PrepareSetupResponse>) {
+        // Step 1: Create a PaymentIntent with capture_method: 'manual' (pre-auth)
+        ApiClient.createPaymentIntent(MAX_PREAUTH_AMOUNT, CURRENCY, object : Callback<PaymentIntentCreationResponse> {
+            override fun onResponse(call: Call<PaymentIntentCreationResponse>, response: Response<PaymentIntentCreationResponse>) {
                 if (response.isSuccessful && response.body() != null) {
                     val secret = response.body()!!.secret
-                    Terminal.getInstance().retrieveSetupIntent(secret, retrieveSetupIntentCallback)
+                    Log.d("MainActivity", "PaymentIntent created, retrieving...")
+                    // Step 2: Retrieve the PaymentIntent to collect payment
+                    Terminal.getInstance().retrievePaymentIntent(secret, retrievePaymentIntentCallback)
                 } else {
-                    Log.e("MainActivity", "Prepare setup failed: ${response.errorBody()?.string()}")
+                    Log.e("MainActivity", "Create PaymentIntent failed: ${response.errorBody()?.string()}")
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Failed to create payment", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
 
-            override fun onFailure(call: Call<PrepareSetupResponse>, t: Throwable) {
-                Log.e("MainActivity", "Prepare setup failed", t)
+            override fun onFailure(call: Call<PaymentIntentCreationResponse>, t: Throwable) {
+                Log.e("MainActivity", "Create PaymentIntent failed", t)
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Network error: ${t.message}", Toast.LENGTH_SHORT).show()
+                }
             }
         })
     }
@@ -385,76 +398,91 @@ class MainActivity : AppCompatActivity(), NavigationListener {
         navigateTo(ConnectReaderFragment.TAG, ConnectReaderFragment(), true)
     }
 
-    private val retrieveSetupIntentCallback by lazy {
-        object : SetupIntentCallback {
-            override fun onSuccess(setupIntent: SetupIntent) {
-                Terminal.getInstance().collectSetupIntentPaymentMethod(
-                    setupIntent, 
-                    AllowRedisplay.ALWAYS,
-                    CollectSetupIntentConfiguration.Builder().build(),
-                    collectSetupMethodCallback
+    // Step 2 callback: Retrieve PaymentIntent
+    private val retrievePaymentIntentCallback by lazy {
+        object : PaymentIntentCallback {
+            override fun onSuccess(paymentIntent: PaymentIntent) {
+                Log.d("MainActivity", "PaymentIntent retrieved: ${paymentIntent.id}")
+                // Step 3: Collect payment method (user taps card)
+                Terminal.getInstance().collectPaymentMethod(
+                    paymentIntent, 
+                    collectPaymentMethodCallback
                 )
             }
 
             override fun onFailure(e: TerminalException) {
-                Log.e("MainActivity", "Retrieve SetupIntent failed", e)
+                Log.e("MainActivity", "Retrieve PaymentIntent failed", e)
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Payment error: ${e.errorMessage}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
 
-    private val collectSetupMethodCallback by lazy {
-        object : SetupIntentCallback {
-            override fun onSuccess(setupIntent: SetupIntent) {
-                Terminal.getInstance().confirmSetupIntent(setupIntent, confirmSetupIntentCallback)
+    // Step 3 callback: Collect payment method (card tap)
+    private val collectPaymentMethodCallback by lazy {
+        object : PaymentIntentCallback {
+            override fun onSuccess(paymentIntent: PaymentIntent) {
+                Log.d("MainActivity", "Payment method collected, confirming...")
+                // Step 4: Confirm the PaymentIntent (authorize the pre-auth)
+                Terminal.getInstance().confirmPaymentIntent(paymentIntent, confirmPaymentIntentCallback)
             }
 
             override fun onFailure(e: TerminalException) {
                 Log.e("MainActivity", "Collect PaymentMethod failed", e)
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Card read failed: ${e.errorMessage}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
 
-    private fun performLogin(pmId: String) {
-        ApiClient.loginByCard(pmId, object : Callback<LoginResponse> {
-            override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
-                 if (response.isSuccessful && response.body() != null) {
-                     Log.d("MainActivity", "Login Successful: ${response.body()}")
-                     val sessionId = response.body()!!.session_id
-                     navigateTo(ShoppingFragment.TAG, ShoppingFragment.newInstance(sessionId), true)
-                 } else {
-                     Log.e("MainActivity", "Login Failed: ${response.code()}")
-                     runOnUiThread {
-                        Toast.makeText(this@MainActivity, "Login Failed: ${response.code()}", Toast.LENGTH_LONG).show()
-                     }
-                 }
-            }
-
-            override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
-                Log.e("MainActivity", "Login API failed", t)
-                 runOnUiThread {
-                    Toast.makeText(this@MainActivity, "Login API Error: ${t.message}", Toast.LENGTH_LONG).show()
-                 }
-            }
-        })
-    }
-
-
-
-    private val confirmSetupIntentCallback by lazy {
-        object : SetupIntentCallback {
-            override fun onSuccess(setupIntent: SetupIntent) {
-                val pmId = setupIntent.paymentMethodId
-                if (pmId != null) {
-                    performLogin(pmId)
+    // Step 4 callback: Confirm PaymentIntent (authorize pre-auth)
+    private val confirmPaymentIntentCallback by lazy {
+        object : PaymentIntentCallback {
+            override fun onSuccess(paymentIntent: PaymentIntent) {
+                Log.d("MainActivity", "PaymentIntent confirmed: ${paymentIntent.id}, status: ${paymentIntent.status}")
+                // Step 5: Login with the authorized PaymentIntent
+                val piId = paymentIntent.id
+                if (piId != null) {
+                    performLoginByPayment(piId)
                 } else {
-                     Log.e("MainActivity", "PaymentMethodID is null after confirm")
+                    Log.e("MainActivity", "PaymentIntent ID is null after confirm")
                 }
             }
 
             override fun onFailure(e: TerminalException) {
-                Log.e("MainActivity", "Confirm SetupIntent failed", e)
+                Log.e("MainActivity", "Confirm PaymentIntent failed", e)
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Authorization failed: ${e.errorMessage}", Toast.LENGTH_LONG).show()
+                }
             }
         }
+    }
+
+    // Step 5: Login using the authorized PaymentIntent
+    private fun performLoginByPayment(paymentIntentId: String) {
+        ApiClient.loginByPayment(paymentIntentId, object : Callback<LoginByPaymentResponse> {
+            override fun onResponse(call: Call<LoginByPaymentResponse>, response: Response<LoginByPaymentResponse>) {
+                if (response.isSuccessful && response.body() != null) {
+                    Log.d("MainActivity", "Login Successful: ${response.body()}")
+                    val sessionId = response.body()!!.session_id
+                    navigateTo(ShoppingFragment.TAG, ShoppingFragment.newInstance(sessionId), true)
+                } else {
+                    Log.e("MainActivity", "Login Failed: ${response.code()}")
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Login Failed: ${response.code()}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+
+            override fun onFailure(call: Call<LoginByPaymentResponse>, t: Throwable) {
+                Log.e("MainActivity", "Login API failed", t)
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Login API Error: ${t.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        })
     }
 
     override fun onCancel(){

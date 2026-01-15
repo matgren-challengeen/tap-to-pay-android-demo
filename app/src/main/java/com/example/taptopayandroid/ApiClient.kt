@@ -9,12 +9,11 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.Path
 import java.io.IOException
 
 /**
- * The `ApiClient` is a singleton object used to make calls to our backend and return their results
+ * The `ApiClient` is a singleton object used to make calls to our backend.
+ * This implements the API contract defined in BackendService.
  */
 object ApiClient {
 
@@ -27,6 +26,9 @@ object ApiClient {
         .build()
     private val service: BackendService = retrofit.create(BackendService::class.java)
 
+    /**
+     * Get connection token for Stripe Terminal SDK.
+     */
     @Throws(ConnectionTokenException::class)
     internal fun createConnectionToken(): String {
         try {
@@ -41,66 +43,40 @@ object ApiClient {
         }
     }
 
-    internal fun createLocation(
-        displayName: String?,
-        city: String?,
-        country: String?,
-        line1: String?,
-        line2: String?,
-        postalCode: String?,
-        state: String?,
-    ) {
-        TODO("Call Backend application to create location")
-    }
-
-    internal fun capturePaymentIntent(id: String) {
-        service.capturePaymentIntent(id).execute()
-    }
-
-    internal fun cancelPaymentIntent(
-        id: String,
-        callback: Callback<Void>
-    ) {
-        service.cancelPaymentIntent(id).enqueue(callback)
-    }
-
     /**
-     * This method is calling the example backend (https://github.com/stripe/example-terminal-backend)
-     * to create paymentIntent for Internet based readers, for example WisePOS E. For your own application, you
-     * should create paymentIntent in your own merchant backend.
+     * Create a PaymentIntent with pre-authorization.
+     * For Tap-to-Pay, this is called before collecting payment.
      */
     internal fun createPaymentIntent(
         amount: Long,
         currency: String,
-        extendedAuth: Boolean,
-        incrementalAuth: Boolean,
         callback: Callback<PaymentIntentCreationResponse>
     ) {
         val createPaymentIntentParams = buildMap<String, String> {
             put("amount", amount.toString())
             put("currency", currency)
-
-            if (extendedAuth) {
-                put("payment_method_options[card_present[request_extended_authorization]]", "true")
-            }
-            if (incrementalAuth) {
-                put("payment_method_options[card_present[request_incremental_authorization_support]]", "true")
-            }
+            // capture_method: 'manual' is set by backend
         }
 
         service.createPaymentIntent(createPaymentIntentParams).enqueue(callback)
     }
 
-    internal fun prepareSetup(callback: Callback<PrepareSetupResponse>) {
-        service.prepareSetup().enqueue(callback)
+    /**
+     * Login using an authorized PaymentIntent.
+     * Called after successful card tap and payment confirmation.
+     */
+    internal fun loginByPayment(
+        paymentIntentId: String,
+        callback: Callback<LoginByPaymentResponse>
+    ) {
+        service.loginByPayment(paymentIntentId).enqueue(callback)
     }
 
-    internal fun loginByCard(paymentMethodId: String, callback: Callback<LoginResponse>) {
-        service.loginByCard(paymentMethodId).enqueue(callback)
-    }
-
-    fun loginReturn(paymentMethodId: String, callback: (String?, Int) -> Unit) {
-        service.loginReturn(paymentMethodId).enqueue(object : Callback<LoginReturnResponse> {
+    /**
+     * Login for return containers flow.
+     */
+    fun loginReturn(paymentIntentId: String, callback: (String?, Int) -> Unit) {
+        service.loginReturn(paymentIntentId).enqueue(object : Callback<LoginReturnResponse> {
             override fun onResponse(call: Call<LoginReturnResponse>, response: retrofit2.Response<LoginReturnResponse>) {
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
@@ -117,7 +93,28 @@ object ApiClient {
         })
     }
 
+    /**
+     * Capture a pre-authorized PaymentIntent (usually called by backend, not app).
+     */
+    internal fun capturePaymentIntent(id: String) {
+        service.capturePaymentIntent(id).execute()
+    }
+
+    /**
+     * Cancel a pre-authorized PaymentIntent.
+     */
+    internal fun cancelPaymentIntent(
+        id: String,
+        callback: Callback<Void>
+    ) {
+        service.cancelPaymentIntent(id).enqueue(callback)
+    }
+
+    /**
+     * Get cart data by ID.
+     */
     internal fun getCart(id: String): Call<StoreCartResponse> {
         return service.getCart(id)
     }
 }
+

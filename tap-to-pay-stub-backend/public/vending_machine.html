@@ -259,10 +259,10 @@
                         log(`[${e.source.toUpperCase()}] ${e.message}`, e.type);
                         lastEventTimestamp = Math.max(lastEventTimestamp, e.timestamp);
 
-                        // Unlock Door Logic
-                        if (e.message.includes('Transaction Open')) {
+                        // Unlock Door Logic - handle both old and new event formats
+                        if (e.message.includes('Transaction Open') || e.message.includes('Session Created')) {
                             // Extract Session ID if present
-                            // Expected format: "Transaction Open: <session_id>"
+                            // Expected format: "Transaction Open: <session_id>" or "Session Created: <session_id>"
                             const parts = e.message.split(':');
                             if (parts.length > 1) {
                                 const sid = parts[1].trim();
@@ -277,6 +277,11 @@
                         // Return Mode Logic
                         if (e.message.includes('Return Mode Active')) {
                             activateReturnMode();
+                        }
+
+                        // Session Completed - show result
+                        if (e.message.includes('Payment Captured') || e.message.includes('Pre-auth Released')) {
+                            log("💳 " + e.message, e.type);
                         }
                     });
                 }

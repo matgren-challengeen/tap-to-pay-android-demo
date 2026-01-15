@@ -12,34 +12,22 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 
 /**
- * The `BackendService` interface handles the two simple calls we need to make to our backend.
+ * The `BackendService` interface defines the API contract for the Tap-to-Pay backend.
+ * This contract is implemented by both the Stub Backend (for development) and the 
+ * Medusa.js Backend (for production).
  */
 interface BackendService {
 
     /**
-     * Get a connection token string from the backend
+     * Get a connection token string from the backend.
+     * Required by Stripe Terminal SDK to authenticate.
      */
     @POST("connection_token")
     fun getConnectionToken(): Call<ConnectionToken>
 
     /**
-     * Capture a specific payment intent on our backend
-     */
-    @FormUrlEncoded
-    @POST("capture_payment_intent")
-    fun capturePaymentIntent(@Field("payment_intent_id") id: String): Call<Void>
-
-    /**
-     * Cancel a specific payment intent on our backend
-     */
-    @FormUrlEncoded
-    @POST("cancel_payment_intent")
-    fun cancelPaymentIntent(@Field("payment_intent_id") id: String): Call<Void>
-
-    /**
-     * Create a PaymentIntent in example backend and return PaymentIntentCreationResponse
-     * For internet readers, you need to create paymentIntent in backend
-     * https://stripe.com/docs/terminal/payments/collect-payment?terminal-sdk-platform=android#create-payment
+     * Create a PaymentIntent with pre-authorization (capture_method: 'manual').
+     * This is called at tap time to authorize the maximum possible amount.
      */
     @FormUrlEncoded
     @POST("create_payment_intent")
@@ -47,17 +35,41 @@ interface BackendService {
         @FieldMap createPaymentIntentParams: Map<String, String>
     ): Call<PaymentIntentCreationResponse>
 
-    @POST("store/auth/prepare-setup")
-    fun prepareSetup(): Call<PrepareSetupResponse>
-
+    /**
+     * Capture a pre-authorized PaymentIntent.
+     * Called by backend when door closes (not directly by app in normal flow).
+     */
     @FormUrlEncoded
-    @POST("store/auth/login-by-card")
-    fun loginByCard(@Field("payment_method_id") paymentMethodId: String): Call<LoginResponse>
+    @POST("capture_payment_intent")
+    fun capturePaymentIntent(@Field("payment_intent_id") id: String): Call<Void>
 
+    /**
+     * Cancel a pre-authorized PaymentIntent.
+     * Called if cart is empty when door closes.
+     */
+    @FormUrlEncoded
+    @POST("cancel_payment_intent")
+    fun cancelPaymentIntent(@Field("payment_intent_id") id: String): Call<Void>
+
+    /**
+     * Login using an authorized PaymentIntent.
+     * Backend extracts card fingerprint, identifies/creates customer, returns session.
+     */
+    @FormUrlEncoded
+    @POST("store/auth/login-by-payment")
+    fun loginByPayment(@Field("payment_intent_id") paymentIntentId: String): Call<LoginByPaymentResponse>
+
+    /**
+     * Login for return flow (returning containers).
+     */
     @FormUrlEncoded
     @POST("store/auth/login-return")
-    fun loginReturn(@Field("payment_method_id") paymentMethodId: String): Call<LoginReturnResponse>
+    fun loginReturn(@Field("payment_intent_id") paymentIntentId: String): Call<LoginReturnResponse>
 
+    /**
+     * Get cart data by ID.
+     */
     @GET("store/carts/{id}")
     fun getCart(@Path("id") id: String): Call<StoreCartResponse>
 }
+

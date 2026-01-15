@@ -9,7 +9,7 @@ export interface SimulationEvent {
 class EventStore {
     private events: SimulationEvent[] = [];
 
-    add(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', source: 'backend') {
+    add(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', source: 'app' | 'backend' | 'hardware' = 'backend') {
         const event: SimulationEvent = {
             id: Math.random().toString(36).substring(7),
             timestamp: Date.now(),
