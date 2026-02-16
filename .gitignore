@@ -2,4 +2,4 @@
 .git
 .gradle/
 .idea
-app/build/
+app/build/app/google-services.json
