@@ -232,6 +232,30 @@
             cursor: not-allowed;
         }
 
+        .btn-vend {
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px 10px;
+            background: #635bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        .btn-vend:disabled {
+            background: #e3e8ee;
+            color: #a3acb9;
+            cursor: not-allowed;
+        }
+
+        .btn-vend:hover:not(:disabled) {
+            background: #4b45cc;
+        }
+
         .item-slot.has-selection {
             border-color: #635bff;
             background: #f4f7ff;
@@ -267,7 +291,7 @@
             <!-- Dimmed when door closed -->
             <p
                 style="text-align: left; color: #697386; font-size: 12px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
-                Products (Pick Items)</p>
+                Products</p>
             <div class="shelves" id="shelves">
                 <div class="item-slot active" id="item-1">
                     <div style="font-size: 24px; margin-bottom: 5px;">🥤</div>
@@ -278,6 +302,7 @@
                         <span id="qty-1" class="qty-value">0</span>
                         <button class="qty-btn" onclick="changeQty(1, 1)">+</button>
                     </div>
+                    <button id="vend-1" class="btn-vend" onclick="vendItem(1)" disabled>Perform</button>
                 </div>
                 <div class="item-slot active" id="item-2">
                     <div style="font-size: 24px; margin-bottom: 5px;">🥯</div>
@@ -288,21 +313,31 @@
                         <span id="qty-2" class="qty-value">0</span>
                         <button class="qty-btn" onclick="changeQty(2, 1)">+</button>
                     </div>
+                    <button id="vend-2" class="btn-vend" onclick="vendItem(2)" disabled>Perform</button>
                 </div>
                 <div class="item-slot active" id="item-3">
                     <div style="font-size: 24px; margin-bottom: 5px;">🍲</div>
-                    <div>Soup Jar</div>
+                    <div>Soup (Small Jar)</div>
                     <div style="font-size: 11px; color: #697386;">$5.00 + $0.50 dep</div>
                     <div class="qty-controls">
                         <button class="qty-btn" onclick="changeQty(3, -1)">−</button>
                         <span id="qty-3" class="qty-value">0</span>
                         <button class="qty-btn" onclick="changeQty(3, 1)">+</button>
                     </div>
+                    <button id="vend-3" class="btn-vend" onclick="vendItem(3)" disabled>Perform</button>
+                </div>
+                <div class="item-slot active" id="item-4">
+                    <div style="font-size: 24px; margin-bottom: 5px;">🥣</div>
+                    <div>Soup (Big Jar)</div>
+                    <div style="font-size: 11px; color: #697386;">$7.00 + $1.00 dep</div>
+                    <div class="qty-controls">
+                        <button class="qty-btn" onclick="changeQty(4, -1)">−</button>
+                        <span id="qty-4" class="qty-value">0</span>
+                        <button class="qty-btn" onclick="changeQty(4, 1)">+</button>
+                    </div>
+                    <button id="vend-4" class="btn-vend" onclick="vendItem(4)" disabled>Perform</button>
                 </div>
             </div>
-            <button id="btn-confirm-pick" class="btn-confirm" onclick="confirmPick()" disabled>
-                Confirm Selection (<span id="total-items">0</span> items)
-            </button>
         </div>
         <div id="return-interface"
             style="display:none; background:#4a5568; padding:20px; color:white; border-radius:10px; margin-top:20px; width:100%; box-sizing:border-box;">
@@ -333,6 +368,17 @@
         let doorTimer = null;
         let currentSessionId = null;
 
+        const items = {
+            1: { price: 200, deposit: 0, name: "Cola", emoji: "🥤" },
+            2: { price: 350, deposit: 0, name: "Bagel", emoji: "🥯" },
+            3: { price: 500, deposit: 50, name: "Small Jar", emoji: "🍲" },
+            4: { price: 700, deposit: 100, name: "Big Jar", emoji: "🥣" }
+        };
+
+        // Current cart state (item_id -> quantity)
+        // Local staging quantities (not yet committed to backend)
+        let stagingQuantities = { 1: 0, 2: 0, 3: 0, 4: 0 };
+
         async function pollEvents() {
             try {
                 const res = await fetch(`${baseUrl}/simulate/events?since=${lastEventTimestamp}`);
@@ -347,13 +393,14 @@
                         if (e.message.includes('Transaction Open') || e.message.includes('Session Created')) {
                             // Extract Session ID if present
                             // Expected format: "Transaction Open: <session_id>" or "Session Created: <session_id>"
-                            const parts = e.message.split(':');
-                            if (parts.length > 1) {
-                                const sid = parts[1].trim();
-                                currentSessionId = sid;
+                            const sidMatch = e.message.match(/sess_[a-z0-9]+/i);
+                            if (sidMatch) {
+                                currentSessionId = sidMatch[0];
                                 const sessionInput = document.getElementById('session-id');
-                                if (sessionInput) sessionInput.value = sid;
-                                console.log("Session ID set to:", sid);
+                                if (sessionInput) sessionInput.value = currentSessionId;
+                                console.log("Session ID set to:", currentSessionId);
+                                // Reset staging for new session
+                                resetStaging();
                             }
                             handleUnlock();
                         }
@@ -411,12 +458,28 @@
 
             // Start 15s Timeout
             if (doorTimer) clearTimeout(doorTimer);
-            doorTimer = setTimeout(() => {
+            doorTimer = setTimeout(async () => {
                 log("⏰ TIMEOUT: Door re-locked due to inactivity (15s)", "warning");
+
+                // Notify backend about timeout
+                const sessionId = currentSessionId || document.getElementById('session-id').value;
+                if (sessionId) {
+                    try {
+                        await fetch(`${baseUrl}/simulate/timeout`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ session_id: sessionId })
+                        });
+                    } catch (e) {
+                        console.error("Failed to notify backend of timeout", e);
+                    }
+                }
+
                 isDoorUnlocked = false;
                 isDoorOpen = false;
                 currentSessionId = null;
                 document.getElementById('session-id').value = '';
+                resetStaging();
                 updateUI();
             }, 15000);
         }
@@ -430,11 +493,9 @@
             const statusEl = document.getElementById('connection-status');
 
             // Update connection status
-            if (currentSessionId) {
-                statusEl.innerHTML = '<span class="indicator green"></span>Connected';
-            } else {
-                statusEl.innerHTML = '<span class="indicator red"></span>Disconnected';
-            }
+            statusEl.innerHTML = currentSessionId
+                ? '<span class="indicator green"></span>Connected'
+                : '<span class="indicator red"></span>Disconnected';
 
             if (isDoorUnlocked) {
                 lockIcon.innerText = "🔓";
@@ -444,13 +505,14 @@
                 if (isDoorOpen) {
                     // Door is open - can close but not open again
                     btnOpen.disabled = true;
+                    btnOpen.innerText = "Door is Open";
                     btnClose.disabled = false;
                     shelvesArea.style.opacity = "1.0";
                     shelvesArea.style.pointerEvents = "auto";
                 } else {
                     // Door is unlocked but closed - can open
                     btnOpen.disabled = false;
-                    btnOpen.innerText = "OPEN DOOR";
+                    btnOpen.innerText = "Open Door";
                     btnOpen.className = "btn-primary";
                     btnClose.disabled = true;
                     shelvesArea.style.opacity = "0.5";
@@ -470,9 +532,6 @@
                 shelvesArea.style.pointerEvents = "none";
             }
         }
-
-        // Initialize state
-        updateUI();
 
         async function openDoor() {
             if (!isDoorUnlocked) return;
@@ -505,84 +564,107 @@
                 isDoorOpen = false;
                 currentSessionId = null;
                 document.getElementById('session-id').value = '';
+                resetStaging();
                 updateUI();
             } catch (e) { console.error(e); }
         }
 
-        // Quantities for each product
-        const quantities = { 1: 0, 2: 0, 3: 0 };
-        const items = {
-            1: { price: 200, deposit: 0, name: "Cola", emoji: "🥤" },
-            2: { price: 350, deposit: 0, name: "Bagel", emoji: "🥯" },
-            3: { price: 500, deposit: 50, name: "Soup Jar", emoji: "🍲" }
-        };
-
         function changeQty(itemId, delta) {
             if (!isDoorOpen) return;
-
-            const newQty = Math.max(0, quantities[itemId] + delta);
-            quantities[itemId] = newQty;
-
-            // Update display
-            const qtyEl = document.getElementById(`qty-${itemId}`);
-            qtyEl.textContent = newQty;
-            qtyEl.classList.toggle('has-qty', newQty > 0);
-
-            // Update item slot styling
-            const itemEl = document.getElementById(`item-${itemId}`);
-            itemEl.classList.toggle('has-selection', newQty > 0);
-
-            updateTotals();
+            stagingQuantities[itemId] += delta;
+            updateShelfUI();
         }
 
-        function updateTotals() {
-            const totalItems = Object.values(quantities).reduce((a, b) => a + b, 0);
-            document.getElementById('total-items').textContent = totalItems;
-            document.getElementById('btn-confirm-pick').disabled = totalItems === 0;
+        function updateShelfUI() {
+            for (let id in items) {
+                const qtyEl = document.getElementById(`qty-${id}`);
+                const itemEl = document.getElementById(`item-${id}`);
+                const btn = document.getElementById(`vend-${id}`);
+                const qty = stagingQuantities[id];
+
+                qtyEl.textContent = qty > 0 ? `+${qty}` : qty;
+                qtyEl.classList.toggle('has-qty', qty !== 0);
+                qtyEl.style.color = qty < 0 ? '#ef4444' : (qty > 0 ? '#22c55e' : '#697386');
+
+                itemEl.classList.toggle('has-selection', qty !== 0);
+                if (qty < 0) {
+                    itemEl.style.borderColor = '#ef4444';
+                    itemEl.style.backgroundColor = '#fef2f2';
+                    btn.innerText = "Return";
+                    btn.style.backgroundColor = "#dc2626";
+                    btn.style.color = "white";
+                } else if (qty > 0) {
+                    itemEl.style.borderColor = '#22c55e';
+                    itemEl.style.backgroundColor = '#f0fdf4';
+                    btn.innerText = "Perform";
+                    btn.style.backgroundColor = "#16a34a";
+                    btn.style.color = "white";
+                } else {
+                    itemEl.style.borderColor = '#e3e8ee';
+                    itemEl.style.backgroundColor = '#fff';
+                    btn.innerText = "Perform";
+                    btn.style.backgroundColor = ""; // Reset to default .btn-primary bg
+                    btn.style.color = "";
+                }
+                btn.disabled = qty === 0 || !isDoorOpen;
+            }
         }
 
-        async function confirmPick() {
+        function resetStaging() {
+            stagingQuantities = { 1: 0, 2: 0, 3: 0, 4: 0 };
+            updateShelfUI();
+        }
+
+        async function vendItem(itemId) {
             const sessionId = currentSessionId || document.getElementById('session-id').value;
             if (!sessionId) return alert("No active session!");
-            if (!isDoorOpen) return alert("Door must be open!");
 
-            const totalItems = Object.values(quantities).reduce((a, b) => a + b, 0);
-            if (totalItems === 0) return;
+            const qty = stagingQuantities[itemId];
+            if (qty === 0) return;
 
-            log(`📦 Processing ${totalItems} items...`, "info");
+            const item = items[itemId];
+            const absQty = Math.abs(qty);
+            const isAddition = qty > 0;
+            const endpoint = isAddition ? '/simulate/item-picked' : '/simulate/item-removed';
 
-            // Send each item to backend
-            for (const [itemId, qty] of Object.entries(quantities)) {
-                if (qty > 0) {
-                    const item = items[parseInt(itemId)];
-                    for (let i = 0; i < qty; i++) {
-                        try {
-                            await fetch(`${baseUrl}/simulate/item-picked`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    session_id: sessionId,
-                                    item_id: parseInt(itemId),
-                                    price: item.price,
-                                    deposit: item.deposit
-                                })
-                            });
-                        } catch (e) { console.error(e); }
+            log(`📦 ${isAddition ? 'Vending' : 'Returning'} ${absQty}x ${item.name}...`, "info");
+
+            for (let i = 0; i < absQty; i++) {
+                try {
+                    const response = await fetch(`${baseUrl}${endpoint}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: sessionId,
+                            item_id: parseInt(itemId),
+                            price: item.price,
+                            deposit: item.deposit
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        log(`⚠️ ${error.error || 'Operation failed'}`, "warning");
+                        break;
                     }
-                    log(`${item.emoji} ${item.name} x${qty} added`, "success");
+                } catch (e) {
+                    log(`❌ Connection Error`, "error");
+                    break;
                 }
             }
 
-            // Reset quantities
-            for (const itemId in quantities) {
-                quantities[itemId] = 0;
-                document.getElementById(`qty-${itemId}`).textContent = '0';
-                document.getElementById(`qty-${itemId}`).classList.remove('has-qty');
-                document.getElementById(`item-${itemId}`).classList.remove('has-selection');
-            }
-            updateTotals();
+            log(`${item.emoji} Batch finished`, "success");
+            stagingQuantities[itemId] = 0;
+            updateShelfUI();
+        }
 
-            log(`✅ ${totalItems} items confirmed!`, "success");
+        // Initialize state
+        updateUI();
+        resetStaging(); // Initialize shelf UI as well
+
+        // Legacy function for backwards compatibility
+        async function confirmPick() {
+            // No longer used globally, but kept for reference
         }
 
         // Legacy function for backwards compatibility

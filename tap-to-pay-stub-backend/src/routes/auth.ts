@@ -3,6 +3,7 @@ import { getDb } from '../firebase';
 import { stripe } from '../stripe';
 import { eventStore } from '../data/eventStore';
 import { mockCarts } from './carts';
+import { customerStore } from '../data/customers';
 
 const router = Router();
 
@@ -19,41 +20,52 @@ const sessions = new Map<string, {
 // Accept authorized PaymentIntent, extract fingerprint, create session
 router.post('/login-by-payment', async (req, res) => {
     try {
-        const { payment_intent_id } = req.body;
+        const { payment_intent_id, manual_fingerprint } = req.body;
 
-        if (!payment_intent_id) {
-            return res.status(400).json({ error: 'payment_intent_id is required' });
+        if (!payment_intent_id && !manual_fingerprint) {
+            return res.status(400).json({ error: 'payment_intent_id or manual_fingerprint is required' });
         }
 
-        console.log(`[STUB] login-by-payment: ${payment_intent_id}`);
+        console.log(`[STUB] login-by-payment: pi=${payment_intent_id}, manual_fp=${manual_fingerprint}`);
 
-        // Retrieve PaymentIntent from Stripe to get fingerprint
-        const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id, {
-            expand: ['payment_method']
-        });
-
-        // Extract fingerprint from payment method
+        // Extract fingerprint from payment method or use manual fingerprint (for emulator mode)
         let fingerprint = 'fp_unknown';
         let last4 = '****';
 
-        if (paymentIntent.payment_method && typeof paymentIntent.payment_method === 'object') {
-            const pm = paymentIntent.payment_method as any;
-            if (pm.card_present) {
-                fingerprint = pm.card_present.fingerprint || 'fp_unknown';
-                last4 = pm.card_present.last4 || '****';
-            } else if (pm.card) {
-                fingerprint = pm.card.fingerprint || 'fp_unknown';
-                last4 = pm.card.last4 || '****';
+        if (manual_fingerprint) {
+            // Emulator mode: use the provided fingerprint directly
+            fingerprint = manual_fingerprint;
+            last4 = 'SIM';
+            console.log(`[STUB] Using manual fingerprint (emulator mode): ${fingerprint}`);
+        } else {
+            // Real mode: retrieve PaymentIntent from Stripe to get fingerprint
+            const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id, {
+                expand: ['payment_method']
+            });
+
+            if (paymentIntent.payment_method && typeof paymentIntent.payment_method === 'object') {
+                const pm = paymentIntent.payment_method as any;
+                if (pm.card_present) {
+                    fingerprint = pm.card_present.fingerprint || 'fp_unknown';
+                    last4 = pm.card_present.last4 || '****';
+                } else if (pm.card) {
+                    fingerprint = pm.card.fingerprint || 'fp_unknown';
+                    last4 = pm.card.last4 || '****';
+                }
             }
         }
 
         console.log(`[STUB] Extracted fingerprint: ${fingerprint}, last4: ${last4}`);
 
-        // In a real implementation, we'd look up customer by fingerprint
-        // For stub, we create a mock customer
-        const customer_id = `cust_${fingerprint.substring(0, 8)}`;
+        // Handle customer identity
+        const customer = customerStore.getOrCreate(fingerprint);
+        const customer_id = customer.customer_id;
+
         const session_id = `sess_${Date.now()}`;
         const cart_id = `mock_cart_${session_id}`;
+
+        // Mock JWT token (Medusa v2 format)
+        const token = `mock_jwt_${Buffer.from(JSON.stringify({ customer_id, fingerprint })).toString('base64')}`;
 
         // Initialize empty cart
         mockCarts.set(cart_id, {
@@ -92,6 +104,7 @@ router.post('/login-by-payment', async (req, res) => {
         }
 
         res.json({
+            token,
             session_id,
             customer_id,
             fingerprint,
@@ -107,22 +120,43 @@ router.post('/login-by-payment', async (req, res) => {
 // POST /store/auth/login-return (for return flow)
 router.post('/login-return', async (req, res) => {
     try {
-        const { payment_intent_id } = req.body;
-        console.log(`[STUB] login-return: ${payment_intent_id}`);
+        // Retrieve PaymentIntent from Stripe (or use manual fingerprint if provided)
+        const { payment_intent_id, manual_fingerprint } = req.body;
 
-        // Similar to login-by-payment but for return containers flow
+        let fingerprint = manual_fingerprint;
+        let last4 = '****';
+
+        if (!fingerprint && payment_intent_id) {
+            const paymentIntent = await stripe.paymentIntents.retrieve(payment_intent_id, {
+                expand: ['payment_method']
+            });
+            if (paymentIntent.payment_method && typeof paymentIntent.payment_method === 'object') {
+                const pm = paymentIntent.payment_method as any;
+                fingerprint = pm.card_present?.fingerprint || pm.card?.fingerprint || 'fp_unknown';
+                last4 = pm.card_present?.last4 || pm.card?.last4 || '****';
+            }
+        }
+
+        if (!fingerprint) {
+            return res.status(400).json({ error: 'fingerprint or payment_intent_id required' });
+        }
+
+        const customer = customerStore.getOrCreate(fingerprint);
         const session_id = 'return_sess_' + Date.now();
-        const customer_id = 'cust_returner';
-        const returnable_count = 2; // Mock: user has 2 jars to return
 
-        eventStore.add(`Return Mode Active (Limit: ${returnable_count})`, 'info', 'app');
+        // Calculate total returnable jars from actual order history
+        const { orderStore } = require('../data/orders');
+        const returnable_count = orderStore.getReturnableCount(customer.customer_id);
+
+        eventStore.add(`Return Mode: ${customer.customer_id} (Can return: ${returnable_count})`, 'info', 'app');
         eventStore.add(`Session Created: ${session_id}`, 'info', 'backend');
 
         const db = getDb();
         if (db) {
             await db.collection('sessions').doc(session_id).set({
                 status: 'return_mode',
-                customer_id,
+                customer_id: customer.customer_id,
+                fingerprint: customer.fingerprint,
                 returnable_count,
                 payment_intent_id,
                 updatedAt: new Date().toISOString()
@@ -130,8 +164,9 @@ router.post('/login-return', async (req, res) => {
         }
 
         res.json({
+            token: `mock_jwt_${Buffer.from(JSON.stringify({ customer_id: customer.customer_id, fingerprint })).toString('base64')}`,
             session_id,
-            customer_id,
+            customer_id: customer.customer_id,
             returnable_count
         });
     } catch (err: any) {

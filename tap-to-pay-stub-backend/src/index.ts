@@ -10,6 +10,7 @@ const port = parseInt(process.env.PORT || '3000', 10);
 import authRoutes from './routes/auth';
 import simulationRoutes from './routes/simulation';
 import cartRoutes from './routes/carts';
+import returnRoutes from './routes/return';
 import { stripe } from './stripe';
 
 // In-memory store for active sessions (maps session_id to payment_intent_id)
@@ -23,6 +24,7 @@ app.use(express.static('public'));
 app.use('/store/auth', authRoutes);
 app.use('/simulate', simulationRoutes);
 app.use('/store/carts', cartRoutes);
+app.use('/store/return', returnRoutes);
 
 // POST /connection_token - Required by Stripe Terminal SDK
 app.post('/connection_token', async (req, res) => {
@@ -74,20 +76,31 @@ app.post('/capture_payment_intent', async (req, res) => {
 
         console.log(`[STUB] Capturing PaymentIntent: ${payment_intent_id}, amount: ${amount_to_capture || 'full'}`);
 
-        const captureParams: any = {};
-        if (amount_to_capture) {
-            captureParams.amount_to_capture = parseInt(amount_to_capture);
+        let result: any;
+        if (payment_intent_id.startsWith('emulator_')) {
+            console.log(`[STUB] Emulator session: skipping Stripe capture`);
+            result = {
+                id: payment_intent_id,
+                status: 'succeeded',
+                amount_received: parseInt(amount_to_capture) || 0
+            };
+        } else {
+            const captureParams: any = {};
+            if (amount_to_capture) {
+                captureParams.amount_to_capture = parseInt(amount_to_capture);
+            }
+
+            const paymentIntent = await stripe.paymentIntents.capture(payment_intent_id, captureParams);
+            result = {
+                id: paymentIntent.id,
+                status: paymentIntent.status,
+                amount_received: paymentIntent.amount_received
+            };
         }
 
-        const paymentIntent = await stripe.paymentIntents.capture(payment_intent_id, captureParams);
+        console.log(`[STUB] Captured Result: ${result.id}, status: ${result.status}`);
 
-        console.log(`[STUB] Captured PaymentIntent: ${paymentIntent.id}, status: ${paymentIntent.status}`);
-
-        res.json({
-            id: paymentIntent.id,
-            status: paymentIntent.status,
-            amount_received: paymentIntent.amount_received
-        });
+        res.json(result);
     } catch (err: any) {
         console.error('Error capturing PaymentIntent:', err);
         res.status(500).json({ error: err.message });
@@ -105,14 +118,24 @@ app.post('/cancel_payment_intent', async (req, res) => {
 
         console.log(`[STUB] Canceling PaymentIntent: ${payment_intent_id}`);
 
-        const paymentIntent = await stripe.paymentIntents.cancel(payment_intent_id);
+        let result: any;
+        if (payment_intent_id.startsWith('emulator_')) {
+            console.log(`[STUB] Emulator session: skipping Stripe cancel`);
+            result = {
+                id: payment_intent_id,
+                status: 'canceled'
+            };
+        } else {
+            const paymentIntent = await stripe.paymentIntents.cancel(payment_intent_id);
+            result = {
+                id: paymentIntent.id,
+                status: paymentIntent.status
+            };
+        }
 
-        console.log(`[STUB] Canceled PaymentIntent: ${paymentIntent.id}, status: ${paymentIntent.status}`);
+        console.log(`[STUB] Canceled Result: ${result.id}, status: ${result.status}`);
 
-        res.json({
-            id: paymentIntent.id,
-            status: paymentIntent.status
-        });
+        res.json(result);
     } catch (err: any) {
         console.error('Error canceling PaymentIntent:', err);
         res.status(500).json({ error: err.message });

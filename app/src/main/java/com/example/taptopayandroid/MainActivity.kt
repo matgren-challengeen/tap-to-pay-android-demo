@@ -53,6 +53,10 @@ class MainActivity : AppCompatActivity(), NavigationListener {
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Apply saved language preference before inflating any views
+        applySavedLocale()
+        
         setContentView(R.layout.activity_main)
 
         navigateTo(ConnectReaderFragment.TAG, ConnectReaderFragment(), false)
@@ -177,6 +181,16 @@ class MainActivity : AppCompatActivity(), NavigationListener {
 
     private var isReturnMode = false
 
+    override fun onShowReturnInstructions() {
+        Log.d("MainActivity", "Showing Return Instructions")
+        navigateTo(
+            com.example.taptopayandroid.fragments.ReturnInstructionsFragment.TAG,
+            com.example.taptopayandroid.fragments.ReturnInstructionsFragment(),
+            true,
+            true // Add to back stack so user can go back
+        )
+    }
+
     override fun onStartReturnFlow() {
         Log.d("MainActivity", "Starting Return Flow")
         isReturnMode = true
@@ -281,27 +295,26 @@ class MainActivity : AppCompatActivity(), NavigationListener {
         })
     }
 
-    private fun handleAuthSuccess(paymentIntentId: String) {
+    private fun handleAuthSuccess(paymentIntentId: String, manualFingerprint: String? = null) {
         if (isReturnMode) {
-            performReturnLogin(paymentIntentId)
+            performReturnLogin(paymentIntentId, manualFingerprint)
         } else {
-            performLoginByPayment(paymentIntentId)
+            performLoginByPayment(paymentIntentId, manualFingerprint)
         }
     }
 
-    private fun performReturnLogin(pmId: String) {
-        ApiClient.loginReturn(pmId) { sessionId, count ->
+    private fun performReturnLogin(pmId: String?, fingerprint: String? = null) {
+        ApiClient.loginReturn(pmId, fingerprint) { sessionId, count ->
              if (sessionId != null) {
-                 Log.d("MainActivity", "Return Login Successful. Count: $count")
+                 Log.d("MainActivity", "Return Login Successful. Session: $sessionId, Count: $count")
                  isReturnMode = false // Reset
                  runOnUiThread {
-                     androidx.appcompat.app.AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Return Mode Active")
-                        .setMessage("You can return up to $count containers.\nPlease go to the Reverse Vending Machine.")
-                        .setPositiveButton("OK") { _, _ -> 
-                             navigateTo(ConnectReaderFragment.TAG, ConnectReaderFragment(), true)
-                        }
-                        .show()
+                     Toast.makeText(this@MainActivity, "Return mode active! Insert jars now.", Toast.LENGTH_SHORT).show()
+                     navigateTo(
+                         com.example.taptopayandroid.fragments.ReturningFragment.TAG,
+                         com.example.taptopayandroid.fragments.ReturningFragment.newInstance(sessionId),
+                         true
+                     )
                  }
              } else {
                  Log.e("MainActivity", "Return Login Failed")
@@ -348,11 +361,16 @@ class MainActivity : AppCompatActivity(), NavigationListener {
         // In emulator mode, bypass Terminal SDK and directly simulate login
         if (DeviceUtils.isEmulator()) {
             Log.d("MainActivity", "Emulator detected. Bypassing Terminal SDK...")
+            
+            // Get manual fingerprint if available
+            val fragment = supportFragmentManager.findFragmentByTag(ConnectReaderFragment.TAG) as? ConnectReaderFragment
+            val fingerprint = fragment?.getEnteredFingerprint()
+            
             runOnUiThread {
-                Toast.makeText(this@MainActivity, "Simulating Card Tap (Emulator Mode)", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Simulating Card Tap (Fingerprint: $fingerprint)", Toast.LENGTH_SHORT).show()
             }
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                handleAuthSuccess("emulator_pi_${System.currentTimeMillis()}")
+                handleAuthSuccess("emulator_pi_${System.currentTimeMillis()}", fingerprint)
             }, 500)
             return
         }
@@ -461,8 +479,8 @@ class MainActivity : AppCompatActivity(), NavigationListener {
     }
 
     // Step 5: Login using the authorized PaymentIntent
-    private fun performLoginByPayment(paymentIntentId: String) {
-        ApiClient.loginByPayment(paymentIntentId, object : Callback<LoginByPaymentResponse> {
+    private fun performLoginByPayment(paymentIntentId: String, manualFingerprint: String? = null) {
+        ApiClient.loginByPayment(paymentIntentId, manualFingerprint, object : Callback<LoginByPaymentResponse> {
             override fun onResponse(call: Call<LoginByPaymentResponse>, response: Response<LoginByPaymentResponse>) {
                 if (response.isSuccessful && response.body() != null) {
                     Log.d("MainActivity", "Login Successful: ${response.body()}")
@@ -491,5 +509,20 @@ class MainActivity : AppCompatActivity(), NavigationListener {
 
     override fun onSessionCompleted(totalAmount: String) {
         navigateTo(SummaryFragment.TAG, SummaryFragment.newInstance(totalAmount), true)
+    }
+    
+    /**
+     * Apply the saved language preference to the app's locale.
+     * This ensures language persists across app restarts and all screens.
+     */
+    private fun applySavedLocale() {
+        val settingsManager = com.example.taptopayandroid.settings.SettingsManager(this)
+        val languageCode = settingsManager.getLanguage()
+        val locale = java.util.Locale(languageCode)
+        java.util.Locale.setDefault(locale)
+        val config = resources.configuration
+        config.setLocale(locale)
+        @Suppress("DEPRECATION")
+        resources.updateConfiguration(config, resources.displayMetrics)
     }
 }

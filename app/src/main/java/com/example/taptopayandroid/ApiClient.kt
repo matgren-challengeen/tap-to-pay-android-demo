@@ -67,16 +67,21 @@ object ApiClient {
      */
     internal fun loginByPayment(
         paymentIntentId: String,
+        manualFingerprint: String? = null,
         callback: Callback<LoginByPaymentResponse>
     ) {
-        service.loginByPayment(paymentIntentId).enqueue(callback)
+        service.loginByPayment(paymentIntentId, manualFingerprint).enqueue(callback)
     }
 
     /**
      * Login for return containers flow.
      */
-    fun loginReturn(paymentIntentId: String, callback: (String?, Int) -> Unit) {
-        service.loginReturn(paymentIntentId).enqueue(object : Callback<LoginReturnResponse> {
+    fun loginReturn(
+        paymentIntentId: String?,
+        manualFingerprint: String? = null,
+        callback: (String?, Int) -> Unit
+    ) {
+        service.loginReturn(paymentIntentId, manualFingerprint).enqueue(object : Callback<LoginReturnResponse> {
             override fun onResponse(call: Call<LoginReturnResponse>, response: retrofit2.Response<LoginReturnResponse>) {
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!

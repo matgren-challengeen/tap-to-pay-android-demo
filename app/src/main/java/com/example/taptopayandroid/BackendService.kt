@@ -57,14 +57,20 @@ interface BackendService {
      */
     @FormUrlEncoded
     @POST("store/auth/login-by-payment")
-    fun loginByPayment(@Field("payment_intent_id") paymentIntentId: String): Call<LoginByPaymentResponse>
+    fun loginByPayment(
+        @Field("payment_intent_id") paymentIntentId: String,
+        @Field("manual_fingerprint") manualFingerprint: String? = null
+    ): Call<LoginByPaymentResponse>
 
     /**
      * Login for return flow (returning containers).
      */
     @FormUrlEncoded
     @POST("store/auth/login-return")
-    fun loginReturn(@Field("payment_intent_id") paymentIntentId: String): Call<LoginReturnResponse>
+    fun loginReturn(
+        @Field("payment_intent_id") paymentIntentId: String?,
+        @Field("manual_fingerprint") manualFingerprint: String? = null
+    ): Call<LoginReturnResponse>
 
     /**
      * Get cart data by ID.

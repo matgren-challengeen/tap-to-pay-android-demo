@@ -24,6 +24,7 @@ class ConnectReaderFragment : Fragment() {
     
     private lateinit var settingsManager: SettingsManager
     private var emailInput: EditText? = null
+    private var fingerprintInput: EditText? = null
     
     companion object {
         const val TAG = "com.example.taptopayandroid.fragments.ConnectReaderFragment"
@@ -41,6 +42,7 @@ class ConnectReaderFragment : Fragment() {
         loginButton = view.findViewById(R.id.login_button)
         simulateTapButton = view.findViewById(R.id.simulate_tap_button)
         emailInput = view.findViewById(R.id.email_input)
+        fingerprintInput = view.findViewById(R.id.fingerprint_input)
         val readerId = view.findViewById<TextView>(R.id.reader_id)
         val settingsButton = view.findViewById<Button>(R.id.settings_button)
 
@@ -59,6 +61,17 @@ class ConnectReaderFragment : Fragment() {
             // In emulator mode, show the simulate button and hide connect reader
             btnConnectReader?.visibility = View.GONE
             simulateTapButton?.visibility = View.VISIBLE
+            fingerprintInput?.visibility = View.VISIBLE
+            
+            // Auto-generate a random seed for testing
+            if (fingerprintInput?.text.isNullOrEmpty()) {
+                val allowedChars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
+                val randomString = (1..10)
+                    .map { allowedChars.random() }
+                    .joinToString("")
+                fingerprintInput?.setText("fp_$randomString")
+            }
+
             if (currentReaderDetails == null) {
                 readerId.text = "Selected location: Simulator Mode"
             }
@@ -92,7 +105,7 @@ class ConnectReaderFragment : Fragment() {
         }
 
         view.findViewById<View>(R.id.return_section)?.setOnClickListener {
-            (activity as? NavigationListener)?.onStartReturnFlow()
+            (activity as? NavigationListener)?.onShowReturnInstructions()
         }
         
         // Settings button with password dialog
@@ -101,6 +114,16 @@ class ConnectReaderFragment : Fragment() {
         }
 
         return view
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Refresh location from settings when returning from Settings screen
+        val readerId = view?.findViewById<TextView>(R.id.reader_id)
+        val locationName = settingsManager.getSelectedLocationName()
+        if (currentReaderDetails == null) {
+            readerId?.text = "${getString(R.string.selected_location)}: $locationName"
+        }
     }
     
     private fun showPasswordDialog() {
@@ -150,5 +173,9 @@ class ConnectReaderFragment : Fragment() {
     
     fun getEnteredEmail(): String? {
         return emailInput?.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    fun getEnteredFingerprint(): String? {
+        return fingerprintInput?.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
     }
 }

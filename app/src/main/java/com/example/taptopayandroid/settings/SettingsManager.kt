@@ -18,9 +18,11 @@ class SettingsManager(context: Context) {
         private const val KEY_SELECTED_LOCATION_ID = "selected_location_id"
         private const val KEY_SELECTED_LOCATION_NAME = "selected_location_name"
         private const val KEY_APP_TITLE = "app_title"
+        private const val KEY_LANGUAGE = "language"
         
         private const val DEFAULT_PASSWORD = "admin"
         private const val DEFAULT_APP_TITLE = "Venloop Tap"
+        private const val DEFAULT_LANGUAGE = "en" // en or pl
     }
     
     private val prefs: SharedPreferences
@@ -77,6 +79,15 @@ class SettingsManager(context: Context) {
     
     fun setAppTitle(title: String) {
         prefs.edit().putString(KEY_APP_TITLE, title).apply()
+    }
+    
+    // Language Management
+    fun getLanguage(): String {
+        return prefs.getString(KEY_LANGUAGE, DEFAULT_LANGUAGE) ?: DEFAULT_LANGUAGE
+    }
+    
+    fun setLanguage(languageCode: String) {
+        prefs.edit().putString(KEY_LANGUAGE, languageCode).apply()
     }
     
     // Clear all settings (for USB reset)

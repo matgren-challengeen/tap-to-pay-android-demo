@@ -14,6 +14,8 @@ interface NavigationListener {
 
     fun onStartLoginFlow(email: String? = null)
 
+    fun onShowReturnInstructions()
+    
     fun onStartReturnFlow()
 
     fun onSessionCompleted(totalAmount: String)

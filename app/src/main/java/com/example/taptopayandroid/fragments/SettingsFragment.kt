@@ -52,6 +52,37 @@ class SettingsFragment : Fragment() {
         selectedLocationName.text = settingsManager.getSelectedLocationName()
         selectedLocationId.text = settingsManager.getSelectedLocationId() ?: "Select a location below"
         
+        // Language buttons
+        val languageEnglishButton = view.findViewById<Button>(R.id.language_english_button)
+        val languagePolishButton = view.findViewById<Button>(R.id.language_polish_button)
+        
+        // Update button styles based on current language
+        fun updateLanguageButtons() {
+            val currentLang = settingsManager.getLanguage()
+            if (currentLang == "en") {
+                languageEnglishButton.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFE65100.toInt())
+                languagePolishButton.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF757575.toInt())
+            } else {
+                languageEnglishButton.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF757575.toInt())
+                languagePolishButton.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFE65100.toInt())
+            }
+        }
+        updateLanguageButtons()
+        
+        languageEnglishButton.setOnClickListener {
+            settingsManager.setLanguage("en")
+            setLocaleAndRefresh("en")
+            updateLanguageButtons()
+            Toast.makeText(context, "Settings saved", Toast.LENGTH_SHORT).show()
+        }
+        
+        languagePolishButton.setOnClickListener {
+            settingsManager.setLanguage("pl")
+            setLocaleAndRefresh("pl")
+            updateLanguageButtons()
+            Toast.makeText(context, "Ustawienia zapisane", Toast.LENGTH_SHORT).show()
+        }
+        
         // Setup locations adapter
         locationsAdapter = LocationsAdapter { location ->
             settingsManager.setSelectedLocation(location.id, location.name)
@@ -129,6 +160,29 @@ class SettingsFragment : Fragment() {
             Location("loc_005", "Mall Food Court")
         )
         locationsAdapter.submitList(mockLocations)
+    }
+    
+    /**
+     * Set locale and refresh the current fragment view without closing settings.
+     * This updates the configuration and then detaches/attaches the fragment to refresh UI.
+     */
+    private fun setLocaleAndRefresh(languageCode: String) {
+        val locale = java.util.Locale(languageCode)
+        java.util.Locale.setDefault(locale)
+        
+        val config = resources.configuration
+        config.setLocale(locale)
+        
+        @Suppress("DEPRECATION")
+        resources.updateConfiguration(config, resources.displayMetrics)
+        
+        // Refresh the fragment to update all text
+        parentFragmentManager.beginTransaction()
+            .detach(this)
+            .commitNow()
+        parentFragmentManager.beginTransaction()
+            .attach(this)
+            .commitNow()
     }
     
     fun setOnBackPressed(callback: () -> Unit) {

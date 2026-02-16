@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Venloop Tap</string>
+    <string name="hello_blank_fragment">Witaj pusty fragment</string>
+    
+    <!-- Language -->
+    <string name="language_english">English</string>
+    <string name="language_polish">Polski</string>
+    
+    <!-- Common -->
+    <string name="settings">Ustawienia</string>
+    <string name="selected_location">Wybrana lokalizacja</string>
+    <string name="not_selected">Nie wybrano</string>
+    <string name="session">Sesja</string>
+    <string name="status">Status</string>
+    
+    <!-- Connect Reader Screen - Purchase Flow -->
+    <string name="tap_card_prompt">Przyłóż kartę, aby się uwierzytelnić\ni rozpocząć zakupy.</string>
+    <string name="connect_reader">Połącz czytnik</string>
+    <string name="tap_card_login">Przyłóż kartę</string>
+    <string name="simulate_card_tap">🎯 Symuluj przyłożenie karty</string>
+    <string name="fingerprint_hint">Odcisk karty: (ręcznie w emulatorze)</string>
+    <string name="email_hint">email: (opcjonalnie)</string>
+    <string name="email_explanation">Podaj swój email, aby połączyć transakcje i historię pojemników z jednym kontem.</string>
+    
+    <!-- Purchase Steps -->
+    <string name="step1_title">Krok 1 - Przyłóż i otwórz</string>
+    <string name="step1_desc">Usłyszysz sygnał dźwiękowy, a drzwi zostaną odblokowane. Masz 15 sekund, aby otworzyć i rozpocząć zakupy.</string>
+    <string name="step2_title">Krok 2 - Wybierz</string>
+    <string name="step2_desc">Wybierz produkty. Każdy przedmiot automatycznie pojawi się w koszyku z nazwą i ceną. Zmieniłeś zdanie? Odłóż go z powrotem.</string>
+    <string name="step3_title">Krok 3 - Zamknij</string>
+    <string name="step3_desc">Zamknij drzwi, aby zakończyć. System podsumuje Twoje produkty i obciąży Twoją kartę. Potwierdzenie pojawi się w aplikacji. Smacznego!</string>
+    
+    <!-- Return Containers Section -->
+    <string name="return_containers">Zwróć opakowania</string>
+    <string name="return_containers_desc">Zwróć puste słoiki i odbierz kaucję.</string>
+    
+    <!-- Return Instructions Screen -->
+    <string name="return_tap_prompt">Przyłóż kartę, aby rozpocząć\nzwrot opakowań.</string>
+    <string name="return_step1_title">Krok 1 - Przyłóż i otwórz</string>
+    <string name="return_step1_desc">Przyłóż kartę i usłyszysz sygnał dźwiękowy, a drzwi szafki zostaną odblokowane. Pociągnij za uchwyt i otwórz drzwi szeroko, aby korzystać wygodnie!</string>
+    <string name="return_step2_title">Krok 2 - Odkładaj pojedynczo</string>
+    <string name="return_step2_desc">Odkładaj pojemniki pojedynczo. Automat zrobi \"pik!\" za każde odłożone prawidłowo opakowanie oraz automatycznie pojawi się w aplikacji – zobaczysz jego nazwę, pojemność i kwotę należnej Tobie kaucji. Nierozpoznane opakowania również możemy przyjąć, jednak za ich zwrot nie otrzymasz kaucji.</string>
+    <string name="return_step3_title">Krok 3 - Zamknij i gotowe</string>
+    <string name="return_step3_desc">Gdy wszystko jest na swoim miejscu, po prostu zamknij drzwi. System automatycznie zakończy sesję zwrotu, a należną Tobie kaucję prześlemy na Twoją kartę. Dziękujemy, że dajesz opakowaniom drugie życie!</string>
+    
+    <!-- Return Mode Active -->
+    <string name="return_mode_active">Tryb zwrotu aktywny</string>
+    <string name="returned_containers">Zwrócone opakowania</string>
+    <string name="refund_summary">Podsumowanie zwrotu</string>
+    <string name="containers_returned">Zwrócone opakowania</string>
+    <string name="refund_amount">Kwota zwrotu</string>
+    <string name="insert_jars_hint">Włóż słoiki, a następnie zamknij drzwi.</string>
+    
+    <!-- Shopping Screen -->
+    <string name="vending_open">Automat jest otwarty!</string>
+    <string name="your_products">Twoje produkty</string>
+    <string name="summary">Podsumowanie</string>
+    <string name="number_of_products">Liczba produktów</string>
+    <string name="amount_to_pay">Kwota do zapłaty</string>
+    <string name="close_door_hint">Zamknij drzwi, aby zakończyć zakupy.</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_title">Ustawienia</string>
+    <string name="language">Język</string>
+    <string name="app_title_label">Nazwa aplikacji</string>
+    <string name="current_location">Aktualna lokalizacja</string>
+    <string name="location">Lokalizacja</string>
+    <string name="fetch_locations">Pobierz lokalizacje</string>
+    <string name="refresh">Odśwież</string>
+    <string name="select_location_hint">Wybierz lokalizację poniżej</string>
+    <string name="save">Zapisz</string>
+    <string name="save_settings">💾 Zapisz ustawienia</string>
+    <string name="cancel">Anuluj</string>
+    <string name="back">← Wróć</string>
+    <string name="change_admin_password">Zmień hasło administratora</string>
+    <string name="change_password">Zmień hasło</string>
+    <string name="current_password">Aktualne hasło</string>
+    <string name="new_password">Nowe hasło</string>
+    <string name="confirm_password">Potwierdź hasło</string>
+    <string name="password_reset_hint">Hasło można zresetować przez połączenie USB\ni uruchomienie: adb shell pm clear com.example.taptopayandroid</string>
+    <string name="settings_saved">Ustawienia zapisane</string>
+</resources>

@@ -1,4 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Venloop Tap</string>
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    
+    <!-- Language -->
+    <string name="language_english">English</string>
+    <string name="language_polish">Polski</string>
+    
+    <!-- Common -->
+    <string name="settings">Settings</string>
+    <string name="selected_location">Selected location</string>
+    <string name="not_selected">Not selected</string>
+    <string name="session">Session</string>
+    <string name="status">Status</string>
+    
+    <!-- Connect Reader Screen - Purchase Flow -->
+    <string name="tap_card_prompt">Tap your card to authenticate\nand start shopping.</string>
+    <string name="connect_reader">Connect Reader</string>
+    <string name="tap_card_login">Tap Card to Login</string>
+    <string name="simulate_card_tap">🎯 Simulate Card Tap</string>
+    <string name="fingerprint_hint">Card Fingerprint: (manual in emulator)</string>
+    <string name="email_hint">email: (optional)</string>
+    <string name="email_explanation">Provide your email to link your transactions and container history with a single account.</string>
+    
+    <!-- Purchase Steps -->
+    <string name="step1_title">Step 1 - Tap and Open</string>
+    <string name="step1_desc">You\'ll hear a beep and the door unlocks. You have 15 seconds to open and start shopping.</string>
+    <string name="step2_title">Step 2 - Select</string>
+    <string name="step2_desc">Pick products. Each item is automatically added to your cart with name and price. Changed your mind? Put it back.</string>
+    <string name="step3_title">Step 3 - Close</string>
+    <string name="step3_desc">Close the door to finish. The system totals your products and charges your card. Confirmation shown in the app. Enjoy!</string>
+    
+    <!-- Return Containers Section -->
+    <string name="return_containers">Return Containers</string>
+    <string name="return_containers_desc">Return empty jars and get your deposit back.</string>
+    
+    <!-- Return Instructions Screen -->
+    <string name="return_tap_prompt">Tap your card to start\nreturning containers.</string>
+    <string name="return_step1_title">Step 1 - Tap and Open</string>
+    <string name="return_step1_desc">Tap your card and you\'ll hear a beep - the door will unlock. Pull the handle and open the door wide for easy access!</string>
+    <string name="return_step2_title">Step 2 - Return One by One</string>
+    <string name="return_step2_desc">Place containers one at a time. The machine beeps for each correctly recognized package and it appears in the app - you\'ll see its name, size, and deposit amount. Unrecognized containers can also be accepted, but no deposit refund for those.</string>
+    <string name="return_step3_title">Step 3 - Close and Done</string>
+    <string name="return_step3_desc">When everything is in place, simply close the door. The system will automatically end your return session and send the deposit to your card. Thank you for giving packaging a second life!</string>
+    
+    <!-- Return Mode Active -->
+    <string name="return_mode_active">Return Mode Active</string>
+    <string name="returned_containers">Returned containers</string>
+    <string name="refund_summary">Refund Summary</string>
+    <string name="containers_returned">Containers returned</string>
+    <string name="refund_amount">Refund amount</string>
+    <string name="insert_jars_hint">Insert jars, then close the door.</string>
+    
+    <!-- Shopping Screen -->
+    <string name="vending_open">Vending is open!</string>
+    <string name="your_products">Your products</string>
+    <string name="summary">Summary</string>
+    <string name="number_of_products">Number of products</string>
+    <string name="amount_to_pay">Amount to pay</string>
+    <string name="close_door_hint">Close the door to finish shopping.</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="language">Language</string>
+    <string name="app_title_label">App Title</string>
+    <string name="current_location">Current Location</string>
+    <string name="location">Location</string>
+    <string name="fetch_locations">Fetch Locations</string>
+    <string name="refresh">Refresh</string>
+    <string name="select_location_hint">Select a location below</string>
+    <string name="save">Save</string>
+    <string name="save_settings">💾 Save Settings</string>
+    <string name="cancel">Cancel</string>
+    <string name="back">← Back</string>
+    <string name="change_admin_password">Change Admin Password</string>
+    <string name="change_password">Change Password</string>
+    <string name="current_password">Current Password</string>
+    <string name="new_password">New Password</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="password_reset_hint">Password can be reset by connecting phone via USB\nand running: adb shell pm clear com.example.taptopayandroid</string>
+    <string name="settings_saved">Settings saved</string>
 </resources>

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.callbackFlow
 data class SessionData(
     val status: String = "",
     val cart_id: String? = null,
+    val cart_total: Int? = null,
     val door_status: String = "locked"
 )
 
